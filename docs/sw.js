@@ -1,4 +1,4 @@
-const CACHE = 'libresconductores-v8';
+const CACHE = 'libresconductores-v9';
 self.addEventListener('install', e => {
     e.waitUntil(caches.open(CACHE).then(c => c.addAll(['./', './index.html', './datos.js', './manifest.json', './icon.png'])).then(() => self.skipWaiting()));
 });
