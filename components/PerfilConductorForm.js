@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Keyboard } from 'react-native';
 import { SISTEMAS_CONDUCTORES, sistemaDe, subgruposDe, etiquetaGrupo } from '../config/libresConductores';
 
@@ -47,6 +47,14 @@ export default function PerfilConductorForm({ value, onChange }) {
     const v = { ...PERFIL_VACIO, ...(value || {}) };
     const set = (campo, dato) => onChange({ ...v, [campo]: dato });
     // Sistema de libres (convencional / búhos / R.S.N): sale del grupo guardado; si aún no hay grupo, de lo que elija.
+    // Altura del teclado: en ventanas emergentes Android no reduce la pantalla, así que dejamos
+    // ese espacio libre debajo del formulario para poder subir los campos por encima del teclado.
+    const [tecladoAlto, setTecladoAlto] = useState(0);
+    useEffect(() => {
+        const a = Keyboard.addListener('keyboardDidShow', e => setTecladoAlto(e?.endCoordinates?.height || 0));
+        const b = Keyboard.addListener('keyboardDidHide', () => setTecladoAlto(0));
+        return () => { a.remove(); b.remove(); };
+    }, []);
     const [sisElegido, setSisElegido] = useState(sistemaDe(v.g));
     const sis = v.g ? sistemaDe(v.g) : sisElegido;
     const sistema = SISTEMAS_CONDUCTORES.find(x => x.id === sis) || SISTEMAS_CONDUCTORES[0];
@@ -109,6 +117,7 @@ export default function PerfilConductorForm({ value, onChange }) {
 
             <Text style={s.label}>{(v.c ? 'Escalafón en la empresa' : 'Escalafón en la línea') + ' (opcional)'}</Text>
             <TextInput style={s.input} placeholder="Ej: 25 (puedes cambiarlo cuando quieras)" keyboardType="numeric" value={v.e} onChangeText={t => set('e', soloNumeros(t))} />
+            {tecladoAlto > 0 && <View style={{ height: tecladoAlto }} />}
         </View>
     );
 }
