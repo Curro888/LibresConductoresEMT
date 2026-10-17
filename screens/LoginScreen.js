@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../config/firebase';
 import { ref, get, set } from 'firebase/database';
 import PerfilConductorForm, { PERFIL_VACIO, validarPerfil, perfilAMiembro, textoPerfil } from '../components/PerfilConductorForm';
+import { etiquetaGrupo } from '../config/libresConductores';
 import { withFirebaseErrorHandling } from '../utils/firebaseErrorHandler';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 
@@ -222,7 +223,7 @@ export default function LoginScreen({ navigation }) {
                         <View key={g.codigo} style={s.grupoFila}>
                             <TouchableOpacity style={s.grupoBtn} onPress={() => entrarDesdeSelector(g)}>
                                 <Text style={s.grupoBtnTexto}>👥 {g.codigo}</Text>
-                                <Text style={s.grupoBtnSub}>{g.nombre} · {g.perfil ? textoPerfil(g.perfil) : `G${g.grupoLibres}·${g.tipo}`}</Text>
+                                <Text style={s.grupoBtnSub}>{g.nombre} · {g.perfil ? textoPerfil(g.perfil) : etiquetaGrupo(g.grupoLibres, g.tipo)}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={s.grupoEliminar} onPress={() => Alert.alert('Eliminar', `¿Quitar "${g.codigo}" de la lista?`, [
                                 { text: 'Cancelar', style: 'cancel' },

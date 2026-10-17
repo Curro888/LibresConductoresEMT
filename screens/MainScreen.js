@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { etiquetaGrupo } from '../config/libresConductores';
 
 export default function MainScreen({ navigation, route }) {
     const sesion = route.params;
@@ -13,7 +14,7 @@ export default function MainScreen({ navigation, route }) {
     return (
         <View style={s.container}>
             <Text style={s.titulo}>👤 {sesion.miNombreCompleto}</Text>
-            <Text style={s.sub}>Grupo {sesion.miGrupoSesion} · {sesion.miTipoSesion}</Text>
+            <Text style={s.sub}>{etiquetaGrupo(sesion.miGrupoSesion, sesion.miTipoSesion)}</Text>
             <Text style={s.sub}>{sesion.modoGrupo ? '👥 Modo grupo' : '👤 Modo individual'}</Text>
             <TouchableOpacity style={s.btn} onPress={cerrarSesion}>
                 <Text style={s.btnTexto}>Cerrar sesión</Text>

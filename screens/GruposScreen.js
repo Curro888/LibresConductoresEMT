@@ -6,8 +6,8 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../config/firebase';
 import { ref, onValue, update, set, remove } from 'firebase/database';
-import { anioInicial, equipoBase, mesesArr, getDiasLibres, getDiasEspeciales, esFestivo, TURNOS_DISPONIBLES } from '../config/datos';
-import { GRUPOS_CONDUCTORES } from '../config/libresConductores';
+import { anioInicial, equipoBase, mesesArr, getDiasLibres, getDiasEspeciales, esFestivo } from '../config/datos';
+import { SISTEMAS_CONDUCTORES, sistemaDe, subgruposDe, nombreGrupo } from '../config/libresConductores';
 import PerfilConductorForm, { PERFIL_VACIO, validarPerfil, perfilAMiembro, textoPerfil } from '../components/PerfilConductorForm';
 import { useTheme } from '../context/ThemeContext';
 
@@ -16,9 +16,8 @@ const { width: SW } = Dimensions.get('window');
 function getDiasEnMes(y, m) { return new Date(y, m + 1, 0).getDate(); }
 function getPrimerDia(y, m) { let d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; }
 
-// En Libres Conductores hay 5 grupos y, dentro de cada uno, 10 subgrupos (A–J).
-// El subgrupo se guarda en el campo "t" de cada persona (y TURNOS_DISPONIBLES = subgrupos).
-const GRUPOS = GRUPOS_CONDUCTORES;
+// En Libres Conductores hay tres sistemas (convencional, búhos y R.S.N), cada uno con sus grupos y subgrupos.
+// El subgrupo se guarda en el campo "t" de cada persona y el grupo en "g" (el código del grupo indica el sistema).
 
 function emojiTurno() {
     return '🚌';
@@ -29,6 +28,8 @@ export default function GruposScreen({ navigation }) {
     const [sesion, setSesion] = useState(null);
     const [tab, setTab] = useState('grupos'); // grupos | info
     const [turnoTab, setTurnoTab] = useState('A'); // subgrupo seleccionado
+    const [sistemaTab, setSistemaTab] = useState('C'); // C = convencional, B = búhos, R = R.S.N
+    const sistemaActual = SISTEMAS_CONDUCTORES.find(x => x.id === sistemaTab) || SISTEMAS_CONDUCTORES[0];
     const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
     const [anio, setAnio] = useState(anioInicial());
     const [infoGrupo, setInfoGrupo] = useState([]);
@@ -46,6 +47,7 @@ export default function GruposScreen({ navigation }) {
             if (raw) {
                 const s = JSON.parse(raw);
                 setSesion(s);
+                setSistemaTab(sistemaDe(s.miGrupoSesion));
                 if (s.grupoActual) {
                     unsubInfoGrupo = onValue(ref(db, 'grupos/' + s.grupoActual + '/miembros'), snap => {
                         const data = snap.val() || [];
@@ -238,7 +240,14 @@ export default function GruposScreen({ navigation }) {
                     {/* Selector turno y año */}
                     <View style={sc.controlesCol}>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={sc.turnoTabsScroll}>
-                            {TURNOS_DISPONIBLES.map(t => (
+                            {SISTEMAS_CONDUCTORES.map(x => (
+                                <TouchableOpacity key={x.id} style={[sc.turnoTab, sistemaTab === x.id && sc.turnoTabActive]} onPress={() => { setSistemaTab(x.id); setTurnoTab('A'); setGrupoSeleccionado(null); }}>
+                                    <Text style={[sc.turnoTabTexto, sistemaTab === x.id && sc.turnoTabTextoActive]}>{x.nombre}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={sc.turnoTabsScroll}>
+                            {subgruposDe(sistemaActual.grupos[0]).map(t => (
                                 <TouchableOpacity key={t} style={[sc.turnoTab, turnoTab === t && sc.turnoTabActive]} onPress={() => { setTurnoTab(t); setGrupoSeleccionado(null); }}>
                                     <Text style={[sc.turnoTabTexto, turnoTab === t && sc.turnoTabTextoActive]}>{emojiTurno(t)} {t}</Text>
                                 </TouchableOpacity>
@@ -259,12 +268,12 @@ export default function GruposScreen({ navigation }) {
                     {!grupoSeleccionado ? (
                         <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
                             <View style={sc.gruposGrid}>
-                                {GRUPOS.map(g => {
+                                {sistemaActual.grupos.map(g => {
                                     const equipoParaContar = (sesion.modoGrupo ? infoGrupo : equipoBase) || [];
                                     const miembros = equipoParaContar.filter(p => p.g === g && p.t === turnoTab);
                                     return (
                                         <TouchableOpacity key={g} style={sc.grupoBtn} onPress={() => setGrupoSeleccionado(g)}>
-                                            <Text style={sc.grupoBtnNum}>G{g}</Text>
+                                            <Text style={sc.grupoBtnNum}>{nombreGrupo(g)}</Text>
                                             <Text style={sc.grupoBtnMiembros}>{miembros.length > 0 ? miembros.map(p => p.n.split(' ')[0]).join(', ') : 'Sin asignar'}</Text>
                                         </TouchableOpacity>
                                     );
@@ -277,7 +286,7 @@ export default function GruposScreen({ navigation }) {
                                 <TouchableOpacity onPress={() => setGrupoSeleccionado(null)} style={sc.btnVolverCal}>
                                     <Text style={sc.btnVolverTexto}>← Grupos</Text>
                                 </TouchableOpacity>
-                                <Text style={sc.calTitulo}>Grupo {grupoSeleccionado} · Subgrupo {turnoTab}</Text>
+                                <Text style={sc.calTitulo}>{nombreGrupo(grupoSeleccionado)} · {sistemaTab === 'R' ? 'Código ' + grupoSeleccionado.slice(1) + turnoTab : 'Subgrupo ' + turnoTab}</Text>
                             </View>
                             <ScrollView showsVerticalScrollIndicator={false}>
                                 {mesesArr.map((_, i) => renderMiniCal(grupoSeleccionado, turnoTab, i))}

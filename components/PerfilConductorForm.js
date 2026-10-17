@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Keyboard } from 'react-native';
-import { GRUPOS_CONDUCTORES, SUBGRUPOS_CONDUCTORES } from '../config/libresConductores';
+import { SISTEMAS_CONDUCTORES, sistemaDe, subgruposDe, etiquetaGrupo } from '../config/libresConductores';
 
 // Perfil de un conductor/a:
 //   g  = grupo de libres ('1'..'5')
@@ -31,7 +31,7 @@ export function perfilAMiembro(p) {
 // Texto corto para mostrar el perfil en listas.
 export function textoPerfil(m) {
     if (!m) return '';
-    const partes = ['G' + m.g + '·' + m.t];
+    const partes = [etiquetaGrupo(m.g, m.t)];
     if (m.c) partes.push('Correturnos');
     else {
         if (m.l) partes.push('Línea ' + m.l);
@@ -46,21 +46,42 @@ const soloNumeros = (txt) => String(txt).replace(/[^0-9]/g, '');
 export default function PerfilConductorForm({ value, onChange }) {
     const v = { ...PERFIL_VACIO, ...(value || {}) };
     const set = (campo, dato) => onChange({ ...v, [campo]: dato });
+    // Sistema de libres (convencional / búhos / R.S.N): sale del grupo guardado; si aún no hay grupo, de lo que elija.
+    const [sisElegido, setSisElegido] = useState(sistemaDe(v.g));
+    const sis = v.g ? sistemaDe(v.g) : sisElegido;
+    const sistema = SISTEMAS_CONDUCTORES.find(x => x.id === sis) || SISTEMAS_CONDUCTORES[0];
+    const esRsn = sis === 'R';
+    const textoGrupo = (g) => (sis === 'C' ? g : g.slice(1));
+    const cambiarSistema = (id) => {
+        Keyboard.dismiss();
+        if (id === sis) return;
+        setSisElegido(id);
+        onChange({ ...v, g: '', t: '' });
+    };
 
     return (
         <View>
-            <Text style={s.label}>Tu grupo de libres</Text>
+            <Text style={s.label}>Tu sistema de libres</Text>
             <View style={s.grid}>
-                {GRUPOS_CONDUCTORES.map(g => (
-                    <TouchableOpacity key={g} style={[s.btn, v.g === g && s.btnActivo]} onPress={() => { Keyboard.dismiss(); set('g', g); }}>
-                        <Text style={[s.btnTexto, v.g === g && s.btnTextoActivo]}>{g}</Text>
+                {SISTEMAS_CONDUCTORES.map(x => (
+                    <TouchableOpacity key={x.id} style={[s.btnAncho, sis === x.id && s.btnActivo]} onPress={() => cambiarSistema(x.id)}>
+                        <Text style={[s.btnTexto, sis === x.id && s.btnTextoActivo]}>{x.nombre}</Text>
                     </TouchableOpacity>
                 ))}
             </View>
 
-            <Text style={s.label}>Tu subgrupo</Text>
+            <Text style={s.label}>{esRsn ? 'Tu grupo R.S.N (primera letra de tu código)' : 'Tu grupo de libres'}</Text>
             <View style={s.grid}>
-                {SUBGRUPOS_CONDUCTORES.map(sg => (
+                {sistema.grupos.map(g => (
+                    <TouchableOpacity key={g} style={[s.btn, v.g === g && s.btnActivo]} onPress={() => { Keyboard.dismiss(); onChange({ ...v, g, t: subgruposDe(g).includes(v.t) ? v.t : '' }); }}>
+                        <Text style={[s.btnTexto, v.g === g && s.btnTextoActivo]}>{textoGrupo(g)}</Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+
+            <Text style={s.label}>{esRsn ? 'Resto de tu código (ej. en A1 es el 1; en AB es la B)' : 'Tu subgrupo'}</Text>
+            <View style={s.grid}>
+                {subgruposDe(v.g || sistema.grupos[0]).map(sg => (
                     <TouchableOpacity key={sg} style={[s.btn, v.t === sg && s.btnActivo]} onPress={() => { Keyboard.dismiss(); set('t', sg); }}>
                         <Text style={[s.btnTexto, v.t === sg && s.btnTextoActivo]}>{sg}</Text>
                     </TouchableOpacity>
