@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Libres Conductores EMT",
+    "slug": "LibresConductoresEMT",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1e1b4b"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+  "adaptiveIcon": {
+    "foregroundImage": "./assets/adaptive-icon.png",
+    "backgroundColor": "#1e1b4b"
+  },
+  "edgeToEdgeEnabled": true,
+  "package": "com.curro888.libresconductoresemt"
+},
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#1e1b4b"
+        }
+      ]
+    ]
+  }
+}
