@@ -16,13 +16,13 @@
       "supportsTablet": true
     },
     "android": {
-  "adaptiveIcon": {
-    "foregroundImage": "./assets/adaptive-icon.png",
-    "backgroundColor": "#1e1b4b"
-  },
-  "edgeToEdgeEnabled": true,
-  "package": "com.curro888.libresconductoresemt"
-},
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1e1b4b"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.curro888.libresconductoresemt"
+    },
     "web": {
       "favicon": "./assets/favicon.png"
     },
@@ -33,7 +33,8 @@
           "icon": "./assets/icon.png",
           "color": "#1e1b4b"
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }
