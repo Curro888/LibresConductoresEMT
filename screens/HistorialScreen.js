@@ -223,7 +223,7 @@ export default function HistorialScreen({ navigation, route }) {
     async function guardarDesdeFormulario() {
         if (!modalForm) return;
         const fecha = (modalForm.fecha || '').trim();
-        if (!fecha) { Alert.alert('Falta la fecha', 'Introduce una fecha, por ejemplo 15/3/2026'); return; }
+        if (!fecha) { Alert.alert('Falta la fecha', 'Introduce una fecha, por ejemplo 15/3/2027'); return; }
         try {
             const nuevoRef = push(ref(db, 'historial2/' + sesion.miID));
             if (modalForm.tipo === 'l26') {
@@ -809,7 +809,7 @@ export default function HistorialScreen({ navigation, route }) {
                             style={[s.editarNotaInput, { marginTop: 12 }]}
                             value={modalForm?.fecha || ''}
                             onChangeText={(t) => setModalForm({ ...modalForm, fecha: t })}
-                            placeholder="Fecha (ej: 15/3/2026)"
+                            placeholder="Fecha (ej: 15/3/2027)"
                         />
                         {(modalForm?.tipo === 'generado' || modalForm?.tipo === 'l26') && (
                             <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>

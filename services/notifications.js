@@ -13,7 +13,14 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// ID del proyecto de Expo (EAS) de ESTA app. Hasta que se cree el proyecto EAS de
+// Libres Conductores EMT (y se configure Firebase Cloud Messaging) se deja en null:
+// así la app NO registra avisos push (y tampoco usa por error el proyecto de TurnosEMT).
+// Cuando exista, se pone aquí el ID (el mismo que extra.eas.projectId de app.json).
+const EXPO_PROJECT_ID = null;
+
 export async function registerForPushNotificationsAsync(userId) {
+  if (!EXPO_PROJECT_ID) return null; // push desactivado hasta configurar el proyecto
   if (!Device.isDevice) return null; // push no funciona en emulador
 
   if (Platform.OS === 'android') {
@@ -32,7 +39,7 @@ export async function registerForPushNotificationsAsync(userId) {
   if (finalStatus !== 'granted') return null;
 
   const tokenData = await Notifications.getExpoPushTokenAsync({
-    projectId: '97cb9556-4483-469f-9ca4-73bd417adea5', // extra.eas.projectId de app.json
+    projectId: EXPO_PROJECT_ID,
   });
   const token = tokenData.data;
 

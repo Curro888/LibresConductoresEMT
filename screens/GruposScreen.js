@@ -6,7 +6,9 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../config/firebase';
 import { ref, onValue, update, set, remove } from 'firebase/database';
-import { equipoBase, mesesArr, getDiasLibres, esFestivo, TURNOS_DISPONIBLES } from '../config/datos';
+import { equipoBase, mesesArr, getDiasLibres, getDiasEspeciales, esFestivo, TURNOS_DISPONIBLES } from '../config/datos';
+import { GRUPOS_CONDUCTORES } from '../config/libresConductores';
+import PerfilConductorForm, { PERFIL_VACIO, validarPerfil, perfilAMiembro, textoPerfil } from '../components/PerfilConductorForm';
 import { useTheme } from '../context/ThemeContext';
 
 const { width: SW } = Dimensions.get('window');
@@ -14,18 +16,19 @@ const { width: SW } = Dimensions.get('window');
 function getDiasEnMes(y, m) { return new Date(y, m + 1, 0).getDate(); }
 function getPrimerDia(y, m) { let d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; }
 
-const GRUPOS_7327 = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15'];
-const GRUPOS_8020 = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15'];
+// En Libres Conductores hay 5 grupos y, dentro de cada uno, 10 subgrupos (A–J).
+// El subgrupo se guarda en el campo "t" de cada persona (y TURNOS_DISPONIBLES = subgrupos).
+const GRUPOS = GRUPOS_CONDUCTORES;
 
-function emojiTurno(t) {
-    return (t === '73/27' || t === '80/20') ? '🌙' : '☀️';
+function emojiTurno() {
+    return '🚌';
 }
 
 export default function GruposScreen({ navigation }) {
     const { theme } = useTheme();
     const [sesion, setSesion] = useState(null);
     const [tab, setTab] = useState('grupos'); // grupos | info
-    const [turnoTab, setTurnoTab] = useState('73/27');
+    const [turnoTab, setTurnoTab] = useState('A'); // subgrupo seleccionado
     const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
     const [anio, setAnio] = useState(new Date().getFullYear());
     const [infoGrupo, setInfoGrupo] = useState([]);
@@ -34,8 +37,7 @@ export default function GruposScreen({ navigation }) {
     const [modalEditar, setModalEditar] = useState(null); // {idx, persona}
     const [editNombre, setEditNombre] = useState('');
     const [editID, setEditID] = useState('');
-    const [editGrupo, setEditGrupo] = useState('');
-    const [editTurno, setEditTurno] = useState('');
+    const [editPerfil, setEditPerfil] = useState(PERFIL_VACIO);
 
     useEffect(() => {
         let unsubInfoGrupo, unsubCreador, unsubAdmins;
@@ -71,6 +73,9 @@ export default function GruposScreen({ navigation }) {
     function renderMiniCal(grupo, turno, mIdx) {
         const diasLibres = getDiasLibres(anio, grupo, turno) || {};
         const libres = diasLibres[mIdx] || [];
+        const esp = getDiasEspeciales(anio, grupo, turno);
+        const subgrupoMes = esp.subgrupo[mIdx] || [];
+        const lrjMes = esp.lrj[mIdx] || [];
         const dias = getDiasEnMes(anio, mIdx);
         const start = getPrimerDia(anio, mIdx);
         const hoy = new Date();
@@ -83,6 +88,10 @@ export default function GruposScreen({ navigation }) {
             const esHoy = hoy.getFullYear() === anio && hoy.getMonth() === mIdx && hoy.getDate() === d;
             let bg = esLibre ? theme.celdaLibre : theme.celdaTrabajo;
             let tc = esLibre ? theme.celdaLibreTexto : theme.celdaTrabajoTexto;
+            if (esLibre) {
+                if (lrjMes.includes(d)) { bg = theme.celdaLrj; tc = theme.celdaLrjTexto; }
+                else if (subgrupoMes.includes(d)) { bg = theme.celdaSubgrupo; tc = theme.celdaSubgrupoTexto; }
+            }
             if (festivo) { bg = '#ef4444'; tc = esLibre ? '#fff' : '#000'; }
             celdas.push(
                 <View key={d} style={[sc.celda, { backgroundColor: bg }, esHoy && sc.celdaHoy]}>
@@ -105,6 +114,9 @@ export default function GruposScreen({ navigation }) {
         if (!editNombre.trim()) { Alert.alert('Error', 'El nombre no puede estar vacío'); return; }
         const idTrim = editID.trim();
         if (!idTrim) { Alert.alert('Error', 'El ID no puede estar vacío'); return; }
+        const errPerfil = validarPerfil(editPerfil);
+        if (errPerfil) { Alert.alert('Error', errPerfil); return; }
+        const miembroPerfil = perfilAMiembro(editPerfil);
 
         // Construir el objeto completo de miembros, indexado por ID, sin duplicados
         const miembrosObj = {};
@@ -118,9 +130,24 @@ export default function GruposScreen({ navigation }) {
             }
         }
 
-        miembrosObj[idTrim] = { n: editNombre.trim(), id: idTrim, g: editGrupo.trim(), t: editTurno.trim() || '73/27' };
+        miembrosObj[idTrim] = { n: editNombre.trim(), id: idTrim, ...miembroPerfil };
 
         await set(ref(db, 'grupos/' + sesion.grupoActual + '/miembros'), miembrosObj);
+
+        // Si la persona editada soy yo, actualizo también mi sesión guardada en el móvil
+        // (para que el calendario use enseguida el nuevo grupo/subgrupo).
+        if (idTrim === sesion.miID) {
+            const nuevaSesion = { ...sesion, miNombreCompleto: editNombre.trim(), miGrupoSesion: miembroPerfil.g, miTipoSesion: miembroPerfil.t, miPerfil: miembroPerfil };
+            await AsyncStorage.setItem('sesion2026', JSON.stringify(nuevaSesion));
+            setSesion(nuevaSesion);
+            const raw = await AsyncStorage.getItem('misGrupos2026');
+            const lista = raw ? JSON.parse(raw) : [];
+            const i = lista.findIndex(g => g.codigo === sesion.grupoActual);
+            if (i >= 0) {
+                lista[i] = { ...lista[i], nombre: editNombre.trim(), tipo: miembroPerfil.t, grupoLibres: miembroPerfil.g, perfil: miembroPerfil };
+                await AsyncStorage.setItem('misGrupos2026', JSON.stringify(lista));
+            }
+        }
         setModalEditar(null);
     }
 
@@ -232,7 +259,7 @@ export default function GruposScreen({ navigation }) {
                     {!grupoSeleccionado ? (
                         <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
                             <View style={sc.gruposGrid}>
-                                {GRUPOS_7327.map(g => {
+                                {GRUPOS.map(g => {
                                     const equipoParaContar = (sesion.modoGrupo ? infoGrupo : equipoBase) || [];
                                     const miembros = equipoParaContar.filter(p => p.g === g && p.t === turnoTab);
                                     return (
@@ -250,7 +277,7 @@ export default function GruposScreen({ navigation }) {
                                 <TouchableOpacity onPress={() => setGrupoSeleccionado(null)} style={sc.btnVolverCal}>
                                     <Text style={sc.btnVolverTexto}>← Grupos</Text>
                                 </TouchableOpacity>
-                                <Text style={sc.calTitulo}>Grupo {grupoSeleccionado} · {turnoTab}</Text>
+                                <Text style={sc.calTitulo}>Grupo {grupoSeleccionado} · Subgrupo {turnoTab}</Text>
                             </View>
                             <ScrollView showsVerticalScrollIndicator={false}>
                                 {mesesArr.map((_, i) => renderMiniCal(grupoSeleccionado, turnoTab, i))}
@@ -266,7 +293,7 @@ export default function GruposScreen({ navigation }) {
                         <View style={sc.infoHeader}>
                             <Text style={sc.infoTitulo}>👥 Compañeros del grupo</Text>
                             <TouchableOpacity style={sc.btnAdd} onPress={() => {
-                                setEditNombre(''); setEditID(''); setEditGrupo(''); setEditTurno('73/27');
+                                setEditNombre(''); setEditID(''); setEditPerfil(PERFIL_VACIO);
                                 setModalEditar({ idx: -1 });
                             }}>
                                 <Text style={sc.btnAddTexto}>+ Añadir</Text>
@@ -282,10 +309,11 @@ export default function GruposScreen({ navigation }) {
                             <View key={p.id} style={sc.miembroFila}>
                                 <View style={sc.miembroInfo}>
                                     <Text style={sc.miembroNombre}>{p.n}</Text>
-                                    <Text style={sc.miembroDetalle}>ID: {p.id} · G{p.g} · {emojiTurno(p.t)} {p.t}</Text>
+                                    <Text style={sc.miembroDetalle}>ID: {p.id} · {textoPerfil(p)}</Text>
                                 </View>
                                 <TouchableOpacity style={sc.btnEditar} onPress={() => {
-                                    setEditNombre(p.n); setEditID(p.id); setEditGrupo(p.g); setEditTurno(p.t);
+                                    setEditNombre(p.n); setEditID(p.id);
+                                    setEditPerfil({ g: String(p.g || ''), t: p.t || '', c: !!p.c, l: p.l || '', tu: p.tu || '', e: p.e || '' });
                                     setModalEditar({ idx });
                                 }}>
                                     <Text style={sc.btnEditarTexto}>✏️</Text>
@@ -314,22 +342,14 @@ export default function GruposScreen({ navigation }) {
             {/* Modal editar/añadir miembro */}
             <Modal transparent animationType="slide" visible={!!modalEditar} onRequestClose={() => setModalEditar(null)}>
                 <View style={sc.overlay}>
-                    <View style={sc.modalCard}>
+                    <View style={[sc.modalCard, { maxHeight: '92%' }]}>
+                      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                         <Text style={sc.modalTitulo}>{modalEditar?.idx === -1 ? '➕ Añadir compañero' : '✏️ Editar compañero'}</Text>
                         <Text style={sc.modalLabel}>Nombre</Text>
                         <TextInput style={sc.input} value={editNombre} onChangeText={setEditNombre} placeholder="Nombre completo" />
                         <Text style={sc.modalLabel}>Número de empleado</Text>
-                        <TextInput style={sc.input} value={editID} onChangeText={setEditID} placeholder="Ej: 2669" keyboardType="numeric" />
-                        <Text style={sc.modalLabel}>Grupo</Text>
-                        <TextInput style={sc.input} value={editGrupo} onChangeText={setEditGrupo} placeholder="Ej: 4" keyboardType="numeric" />
-                        <Text style={sc.modalLabel}>Turno</Text>
-                        <View style={sc.turnoGrid}>
-                            {TURNOS_DISPONIBLES.map(t => (
-                                <TouchableOpacity key={t} style={[sc.turnoTabGrid, editTurno === t && sc.turnoTabActive]} onPress={() => setEditTurno(t)}>
-                                    <Text style={[sc.turnoTabTexto, editTurno === t && sc.turnoTabTextoActive]}>{emojiTurno(t)} {t}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                        <TextInput style={sc.input} value={editID} onChangeText={setEditID} placeholder="Ej: 1234" keyboardType="numeric" />
+                        <PerfilConductorForm value={editPerfil} onChange={setEditPerfil} />
                         <View style={sc.modalBtns}>
                             <TouchableOpacity style={sc.btnCancelar} onPress={() => setModalEditar(null)}>
                                 <Text style={sc.btnCancelarTexto}>Cancelar</Text>
@@ -343,6 +363,7 @@ export default function GruposScreen({ navigation }) {
                                 <Text style={sc.btnBorrarTexto}>🗑️ Eliminar del grupo</Text>
                             </TouchableOpacity>
                         )}
+                      </ScrollView>
                     </View>
                 </View>
             </Modal>

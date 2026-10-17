@@ -18,6 +18,11 @@ const LIGHT = {
     celdaLibreTexto: '#991b1b',
     celdaTrabajo: '#f1f5f9',
     celdaTrabajoTexto: '#334155',
+    // Días libres propios del subgrupo (azul en el PDF) y LRJ (verde en el PDF)
+    celdaSubgrupo: '#bfdbfe',
+    celdaSubgrupoTexto: '#1e3a8a',
+    celdaLrj: '#a7f3d0',
+    celdaLrjTexto: '#065f46',
     isDark: false,
 };
 
@@ -37,6 +42,10 @@ const DARK = {
     celdaLibreTexto: '#fca5a5',
     celdaTrabajo: '#2a3245',
     celdaTrabajoTexto: '#a8b8cc',
+    celdaSubgrupo: '#1e3a8a',
+    celdaSubgrupoTexto: '#bfdbfe',
+    celdaLrj: '#14532d',
+    celdaLrjTexto: '#a7f3d0',
     isDark: true,
 };
 

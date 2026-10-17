@@ -6,7 +6,8 @@ import {
 import { db } from '../config/firebase';
 import { ref, set, push, onValue } from 'firebase/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { equipoBase, mesesArr, getDiasLibres, esFestivo, leerDia, claveDia } from '../config/datos';
+import { equipoBase, mesesArr, getDiasLibres, getDiasEspeciales, esFestivo, leerDia, claveDia } from '../config/datos';
+import { textoPerfil } from '../components/PerfilConductorForm';
 import { enviarPushA } from '../services/notifications';
 import { useTheme } from '../context/ThemeContext';
 
@@ -147,6 +148,9 @@ export default function CalendarioCompaneroScreen({ route, navigation }) {
         const dias = getDiasEnMes(anio, mIdx);
         const start = getPrimerDia(anio, mIdx);
         const libres = diasLibresBase[mIdx] || [];
+        const esp = getDiasEspeciales(anio, persona.g, persona.t);
+        const subgrupoMes = esp.subgrupo[mIdx] || [];
+        const lrjMes = esp.lrj[mIdx] || [];
         const esHoy = (d) => hoy.getFullYear() === anio && hoy.getMonth() === mIdx && hoy.getDate() === d;
         const cambiosPersona = cambiosTodos[uid] || {};
 
@@ -166,6 +170,10 @@ export default function CalendarioCompaneroScreen({ route, navigation }) {
             }
             let bgColor = esLibreReal ? theme.celdaLibre : theme.celdaTrabajo;
             let textColor = esLibreReal ? theme.celdaLibreTexto : theme.celdaTrabajoTexto;
+            if (esLibre && esLibreReal) {
+                if (lrjMes.includes(d)) { bgColor = theme.celdaLrj; textColor = theme.celdaLrjTexto; }
+                else if (subgrupoMes.includes(d)) { bgColor = theme.celdaSubgrupo; textColor = theme.celdaSubgrupoTexto; }
+            }
 
             if (festivo) { bgColor = '#ef4444'; textColor = esLibreReal ? '#ffffff' : '#000000'; }
             if (cambio) {
@@ -218,14 +226,14 @@ export default function CalendarioCompaneroScreen({ route, navigation }) {
                     {libran.length ? libran.map(p => (
                         <View key={p.id} style={s.panelFila}>
                             <Text style={s.panelNombre}>{p.n}</Text>
-                            <Text style={s.panelSub}>G{p.g} · {p.t}</Text>
+                            <Text style={s.panelSub}>{textoPerfil(p)}</Text>
                         </View>
                     )) : <Text style={s.panelVacio}>Ninguno</Text>}
                     <Text style={[s.panelSeccion, { color: '#3b82f6', marginTop: 12 }]}>🚌 TRABAJAN ({trabajan.length})</Text>
                     {trabajan.length ? trabajan.map(p => (
                         <View key={p.id} style={s.panelFila}>
                             <Text style={s.panelNombre}>{p.n}</Text>
-                            <Text style={s.panelSub}>G{p.g} · {p.t}</Text>
+                            <Text style={s.panelSub}>{textoPerfil(p)}</Text>
                         </View>
                     )) : <Text style={s.panelVacio}>Ninguno</Text>}
                 </ScrollView>
@@ -240,7 +248,7 @@ export default function CalendarioCompaneroScreen({ route, navigation }) {
                     <Text style={s.btnVolverTexto}>← Volver</Text>
                 </TouchableOpacity>
                 <Text style={s.titulo}>{persona.n}</Text>
-                <Text style={s.sub}>Grupo {persona.g} · {persona.t}</Text>
+                <Text style={s.sub}>{textoPerfil(persona)}</Text>
                 {modoCambio && (
                     <View style={s.bannerCambio}>
                         <Text style={s.bannerTexto}>🔄 Pulsa el día que {persona.n.split(' ')[0]} te dará a cambio del {modoCambio.diaA}/{modoCambio.mIdxA + 1}</Text>

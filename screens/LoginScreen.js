@@ -6,7 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../config/firebase';
 import { ref, get, set } from 'firebase/database';
-import { equipoBase, TURNOS_DISPONIBLES } from '../config/datos';
+import PerfilConductorForm, { PERFIL_VACIO, validarPerfil, perfilAMiembro, textoPerfil } from '../components/PerfilConductorForm';
 import { withFirebaseErrorHandling } from '../utils/firebaseErrorHandler';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 
@@ -16,23 +16,25 @@ export default function LoginScreen({ navigation }) {
     const [modo, setModo] = useState(null);
     const [gruposGuardados, setGruposGuardados] = useState([]);
 
-    const [userID, setUserID] = useState('');
-    const [userPass, setUserPass] = useState('');
+    // Modo individual (solo para mí, sin grupo)
+    const [indNombre, setIndNombre] = useState('');
+    const [indID, setIndID] = useState('');
+    const [perfilInd, setPerfilInd] = useState(PERFIL_VACIO);
 
+    // Unirse a un grupo existente
     const [grupoCodigo, setGrupoCodigo] = useState('');
     const [grupoPassword, setGrupoPassword] = useState('');
     const [grupoMiID, setGrupoMiID] = useState('');
     const [grupoMiNombre, setGrupoMiNombre] = useState('');
-    const [grupoMiTipo, setGrupoMiTipo] = useState('');
-    const [grupoMiGrupo, setGrupoMiGrupo] = useState('');
+    const [perfilExistente, setPerfilExistente] = useState(PERFIL_VACIO);
 
+    // Crear un grupo nuevo
     const [nuevoGrupoNombre, setNuevoGrupoNombre] = useState('');
     const [nuevoGrupoPass, setNuevoGrupoPass] = useState('');
     const [nuevoGrupoPass2, setNuevoGrupoPass2] = useState('');
     const [nuevoMiNombre, setNuevoMiNombre] = useState('');
     const [nuevoMiID, setNuevoMiID] = useState('');
-    const [nuevoMiTipo, setNuevoMiTipo] = useState('');
-    const [nuevoMiGrupo, setNuevoMiGrupo] = useState('');
+    const [perfilNuevo, setPerfilNuevo] = useState(PERFIL_VACIO);
 
     useEffect(() => {
         async function cargar() {
@@ -84,25 +86,28 @@ export default function LoginScreen({ navigation }) {
             modoGrupo: true,
             grupoActual: g.codigo,
             miGrupoSesion: g.grupoLibres,
-            miTipoSesion: g.tipo
+            miTipoSesion: g.tipo,
+            miPerfil: g.perfil || null
         };
         await AsyncStorage.setItem('sesion2026', JSON.stringify(sesion));
         navigation.replace('Main', sesion);
     }
 
     async function entrarIndividual() {
-        const id = userID.trim();
-        const pass = userPass.trim();
-        const p = equipoBase.find(x => x.id === id);
-        if (!p) { Alert.alert('Error', 'ID de empleado no encontrado'); return; }
-        if (!pass) { Alert.alert('Error', 'Introduce una contraseña'); return; }
+        const nombre = indNombre.trim();
+        const id = indID.trim();
+        if (!nombre || !id) { Alert.alert('Error', 'Escribe tu nombre y tu número de empleado'); return; }
+        const errPerfil = validarPerfil(perfilInd);
+        if (errPerfil) { Alert.alert('Error', errPerfil); return; }
+        const m = perfilAMiembro(perfilInd);
         const sesion = {
             miID: id,
-            miNombreCompleto: p.n,
+            miNombreCompleto: nombre,
             modoGrupo: false,
             grupoActual: null,
-            miGrupoSesion: p.g,
-            miTipoSesion: p.t
+            miGrupoSesion: m.g,
+            miTipoSesion: m.t,
+            miPerfil: m
         };
         await AsyncStorage.setItem('sesion2026', JSON.stringify(sesion));
         navigation.replace('Main', sesion);
@@ -115,9 +120,12 @@ export default function LoginScreen({ navigation }) {
         const pass = grupoPassword.trim();
         const miID = grupoMiID.trim();
         const miNombre = grupoMiNombre.trim();
-        if (!codigo || !pass || !miID || !miNombre || !grupoMiTipo || !grupoMiGrupo) {
+        if (!codigo || !pass || !miID || !miNombre) {
             Alert.alert('Error', 'Rellena todos los campos'); return;
         }
+        const errPerfil = validarPerfil(perfilExistente);
+        if (errPerfil) { Alert.alert('Error', errPerfil); return; }
+        const miembroPerfil = perfilAMiembro(perfilExistente);
 
         let result;
         try {
@@ -128,7 +136,7 @@ export default function LoginScreen({ navigation }) {
                 if (grupo.pass !== pass) { Alert.alert('Error', 'Contraseña incorrecta'); return null; }
 
                 await set(ref(db, `grupos/${codigo}/miembros/${miID}`), {
-                    n: miNombre, id: miID, g: grupoMiGrupo, t: grupoMiTipo
+                    n: miNombre, id: miID, ...miembroPerfil
                 });
                 return true;
             });
@@ -143,10 +151,10 @@ export default function LoginScreen({ navigation }) {
         const sesion = {
             miID, miNombreCompleto: miNombre,
             modoGrupo: true, grupoActual: codigo,
-            miGrupoSesion: grupoMiGrupo, miTipoSesion: grupoMiTipo
+            miGrupoSesion: miembroPerfil.g, miTipoSesion: miembroPerfil.t, miPerfil: miembroPerfil
         };
         await AsyncStorage.setItem('sesion2026', JSON.stringify(sesion));
-        await guardarGrupoEnLista({ codigo, id: miID, nombre: miNombre, tipo: grupoMiTipo, grupoLibres: grupoMiGrupo });
+        await guardarGrupoEnLista({ codigo, id: miID, nombre: miNombre, tipo: miembroPerfil.t, grupoLibres: miembroPerfil.g, perfil: miembroPerfil });
         navigation.replace('Main', sesion);
     }
 
@@ -158,9 +166,12 @@ export default function LoginScreen({ navigation }) {
         const pass2 = nuevoGrupoPass2.trim();
         const miNom = nuevoMiNombre.trim();
         const miId = nuevoMiID.trim();
-        if (!nombre || !pass || !miNom || !miId || !nuevoMiTipo || !nuevoMiGrupo) {
+        if (!nombre || !pass || !miNom || !miId) {
             Alert.alert('Error', 'Rellena todos los campos'); return;
         }
+        const errPerfil = validarPerfil(perfilNuevo);
+        if (errPerfil) { Alert.alert('Error', errPerfil); return; }
+        const miembroPerfil = perfilAMiembro(perfilNuevo);
         if (pass !== pass2) { Alert.alert('Error', 'Las contraseñas no coinciden'); return; }
 
         const base = nombre.toLowerCase()
@@ -170,7 +181,7 @@ export default function LoginScreen({ navigation }) {
         const codigo = base + '_' + Date.now().toString(36);
 
         const result = await withFirebaseErrorHandling(async () => {
-            const primerMiembro = { n: miNom, id: miId, g: nuevoMiGrupo, t: nuevoMiTipo };
+            const primerMiembro = { n: miNom, id: miId, ...miembroPerfil };
             // Guardamos quién crea el grupo (creador), para poder permitir borrarlo más adelante
             // solo a esa persona (o al administrador de la app).
             await set(ref(db, `grupos/${codigo}`), {
@@ -186,17 +197,17 @@ export default function LoginScreen({ navigation }) {
         const sesion = {
             miID: miId, miNombreCompleto: miNom,
             modoGrupo: true, grupoActual: codigo,
-            miGrupoSesion: nuevoMiGrupo, miTipoSesion: nuevoMiTipo
+            miGrupoSesion: miembroPerfil.g, miTipoSesion: miembroPerfil.t, miPerfil: miembroPerfil
         };
         await AsyncStorage.setItem('sesion2026', JSON.stringify(sesion));
-        await guardarGrupoEnLista({ codigo, id: miId, nombre: miNom, tipo: nuevoMiTipo, grupoLibres: nuevoMiGrupo });
+        await guardarGrupoEnLista({ codigo, id: miId, nombre: miNom, tipo: miembroPerfil.t, grupoLibres: miembroPerfil.g, perfil: miembroPerfil });
         navigation.replace('Main', sesion);
     }
 
     return (
         <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
-            <Text style={s.titulo}>📅 Libres EMT</Text>
-            <Text style={s.subtitulo}>Planificación 2026</Text>
+            <Text style={s.titulo}>🚌 Libres Conductores</Text>
+            <Text style={s.subtitulo}>EMT · Planificación 2027</Text>
 
             {!isConnected && (
                 <View style={s.bannerSinConexion}>
@@ -211,7 +222,7 @@ export default function LoginScreen({ navigation }) {
                         <View key={g.codigo} style={s.grupoFila}>
                             <TouchableOpacity style={s.grupoBtn} onPress={() => entrarDesdeSelector(g)}>
                                 <Text style={s.grupoBtnTexto}>👥 {g.codigo}</Text>
-                                <Text style={s.grupoBtnSub}>{g.nombre} · G{g.grupoLibres} · {g.tipo}</Text>
+                                <Text style={s.grupoBtnSub}>{g.nombre} · {g.perfil ? textoPerfil(g.perfil) : `G${g.grupoLibres}·${g.tipo}`}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={s.grupoEliminar} onPress={() => Alert.alert('Eliminar', `¿Quitar "${g.codigo}" de la lista?`, [
                                 { text: 'Cancelar', style: 'cancel' },
@@ -246,10 +257,11 @@ export default function LoginScreen({ navigation }) {
 
             {modo === 'individual' && (
                 <View style={s.card}>
+                    <Text style={s.label}>Tu nombre</Text>
+                    <TextInput style={s.input} placeholder="Ej: Curro" value={indNombre} onChangeText={setIndNombre} />
                     <Text style={s.label}>Tu número de empleado</Text>
-                    <TextInput style={s.input} placeholder="Ej: 2669" keyboardType="numeric" value={userID} onChangeText={setUserID} />
-                    <Text style={s.label}>Contraseña</Text>
-                    <TextInput style={s.input} placeholder="Contraseña" secureTextEntry value={userPass} onChangeText={setUserPass} />
+                    <TextInput style={s.input} placeholder="Ej: 1234" keyboardType="numeric" value={indID} onChangeText={setIndID} />
+                    <PerfilConductorForm value={perfilInd} onChange={setPerfilInd} />
                     <TouchableOpacity style={s.btnPrimario} onPress={entrarIndividual}>
                         <Text style={s.btnPrimarioTexto}>Entrar</Text>
                     </TouchableOpacity>
@@ -285,25 +297,9 @@ export default function LoginScreen({ navigation }) {
                     <Text style={s.label}>Tu nombre</Text>
                     <TextInput style={s.input} placeholder="Ej: Curro" value={grupoMiNombre} onChangeText={setGrupoMiNombre} />
                     <Text style={s.label}>Tu número de empleado</Text>
-                    <TextInput style={s.input} placeholder="Ej: 2669" keyboardType="numeric" value={grupoMiID} onChangeText={setGrupoMiID} />
+                    <TextInput style={s.input} placeholder="Ej: 1234" keyboardType="numeric" value={grupoMiID} onChangeText={setGrupoMiID} />
 
-                    <Text style={s.label}>Tu turno</Text>
-                    <View style={s.opcionesGrid}>
-                        {TURNOS_DISPONIBLES.map(t => (
-                            <TouchableOpacity key={t} style={[s.opcionBtn, grupoMiTipo === t && s.opcionBtnActiva]} onPress={() => { Keyboard.dismiss(); setGrupoMiTipo(t); }}>
-                                <Text style={[s.opcionBtnTexto, grupoMiTipo === t && s.opcionBtnTextoActiva]}>{t}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-
-                    <Text style={s.label}>Tu grupo de libres</Text>
-                    <View style={s.opcionesGrid}>
-                        {Array.from({ length: 15 }, (_, i) => String(i + 1)).map(g => (
-                            <TouchableOpacity key={g} style={[s.opcionBtnSmall, grupoMiGrupo === g && s.opcionBtnActiva]} onPress={() => { Keyboard.dismiss(); setGrupoMiGrupo(g); }}>
-                                <Text style={[s.opcionBtnTexto, grupoMiGrupo === g && s.opcionBtnTextoActiva]}>{g}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    <PerfilConductorForm value={perfilExistente} onChange={setPerfilExistente} />
 
                     <TouchableOpacity style={s.btnPrimario} onPress={unirseGrupo}>
                         <Text style={s.btnPrimarioTexto}>Entrar al grupo</Text>
@@ -329,23 +325,7 @@ export default function LoginScreen({ navigation }) {
                     <Text style={s.label}>Tu ID de empleado</Text>
                     <TextInput style={s.input} placeholder="Tu ID de empleado" keyboardType="numeric" value={nuevoMiID} onChangeText={setNuevoMiID} />
 
-                    <Text style={s.label}>Tu turno</Text>
-                    <View style={s.opcionesGrid}>
-                        {TURNOS_DISPONIBLES.map(t => (
-                            <TouchableOpacity key={t} style={[s.opcionBtn, nuevoMiTipo === t && s.opcionBtnActiva]} onPress={() => { Keyboard.dismiss(); setNuevoMiTipo(t); }}>
-                                <Text style={[s.opcionBtnTexto, nuevoMiTipo === t && s.opcionBtnTextoActiva]}>{t}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-
-                    <Text style={s.label}>Tu grupo de libres</Text>
-                    <View style={s.opcionesGrid}>
-                        {Array.from({ length: 15 }, (_, i) => String(i + 1)).map(g => (
-                            <TouchableOpacity key={g} style={[s.opcionBtnSmall, nuevoMiGrupo === g && s.opcionBtnActiva]} onPress={() => { Keyboard.dismiss(); setNuevoMiGrupo(g); }}>
-                                <Text style={[s.opcionBtnTexto, nuevoMiGrupo === g && s.opcionBtnTextoActiva]}>{g}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    <PerfilConductorForm value={perfilNuevo} onChange={setPerfilNuevo} />
 
                     <TouchableOpacity style={s.btnPrimario} onPress={crearGrupo}>
                         <Text style={s.btnPrimarioTexto}>Crear grupo</Text>

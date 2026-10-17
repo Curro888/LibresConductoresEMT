@@ -1,21 +1,9 @@
-export const equipoBase = [
-    { n:"Raul Infantes", id:"16161", g:"1", t:"73/27" },
-    { n:"Carlos Romero", id:"16225", g:"2", t:"73/27" },
-    { n:"Javi Ranz", id:"18393", g:"2", t:"73/27" },
-    { n:"Curro", id:"2669", g:"4", t:"73/27" },
-    { n:"Ricardo", id:"16128", g:"5", t:"73/27" },
-    { n:"Dani Alexandre", id:"18020", g:"5", t:"73/27" },
-    { n:"Alfredo", id:"18021", g:"6", t:"73/27" },
-    { n:"Angel Luis", id:"18023", g:"7", t:"73/27" },
-    { n:"David Fraile", id:"17989", g:"8", t:"73/27" },
-    { n:"Dani Furti", id:"14976", g:"9", t:"73/27" },
-    { n:"Sergio", id:"18005", g:"10", t:"73/27" },
-    { n:"José María", id:"18015", g:"11", t:"73/27" },
-    { n:"Dani Vime", id:"18011", g:"12", t:"73/27" },
-    { n:"Felix", id:"16108", g:"15", t:"73/27" },
-    { n:"Dani Rivas", id:"14388", g:"1", t:"80/20" },
-    { n:"Raúl Montoya", id:"16122", g:"12", t:"80/20" }
-];
+import { getLibresConductor, FESTIVOS_CONDUCTORES, SUBGRUPOS_CONDUCTORES } from './libresConductores';
+
+// En Libres Conductores no hay lista cerrada de compañeros: cada conductor/a
+// introduce sus propios datos al registrarse (ver components/PerfilConductorForm.js).
+// Se deja el array vacío para que el resto de la app (que lo usa) siga funcionando.
+export const equipoBase = [];
 
 export const mesesArr = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 // Empieza en domingo porque así es como Date.getDay() numera los días (0 = domingo)
@@ -69,6 +57,9 @@ export const FESTIVOS = {
 
 // Para compatibilidad con código existente que usa FESTIVOS_2026
 export const FESTIVOS_2026 = FESTIVOS[2026];
+
+// Los festivos 2027 de conductores salen del PDF oficial (único origen: libresConductores.js).
+FESTIVOS[2027] = FESTIVOS_CONDUCTORES[2027];
 
 export const MAX_LIBRES_VAC = 8;
 
@@ -208,15 +199,23 @@ export function getGruposLibres(year) {
     return _cache[year];
 }
 
+// En esta app el parámetro "turno" es el SUBGRUPO ('A'..'J') y "grupo" es el grupo ('1'..'5').
+// Devuelve un array de 12 meses con los días libres: normales (rojo) + propios del
+// subgrupo (azul) + LRJ (verde). Todos son días libres. Si no hay datos de ese año, devuelve vacío.
 export function getDiasLibres(year, grupo, turno) {
-    const g = getGruposLibres(year);
-    if (turno === '80/20') return g.t8020[grupo];
-    if (turno === '73/27 MT' || turno === '73/27MT') return g.t7327mt[grupo];
-    if (turno === '80/20 MT' || turno === '80/20MT') return g.t8020mt[grupo];
-    return g.t7327[grupo]; // 73/27 noche por defecto
+    const d = getLibresConductor(year, grupo, turno);
+    return d.libres.map((_, m) =>
+        [...new Set([...d.libres[m], ...d.subgrupo[m], ...d.lrj[m]])].sort((a, b) => a - b)
+    );
 }
 
-export const TURNOS_DISPONIBLES = ['73/27', '80/20', '73/27 MT', '80/20 MT'];
+// Días con color especial: { subgrupo: [12 meses], lrj: [12 meses] } (para pintarlos distinto).
+export function getDiasEspeciales(year, grupo, turno) {
+    const d = getLibresConductor(year, grupo, turno);
+    return { subgrupo: d.subgrupo, lrj: d.lrj };
+}
+
+export const TURNOS_DISPONIBLES = SUBGRUPOS_CONDUCTORES;
 
 export function esFestivo(year, mIdx, d) {
     const festivos = FESTIVOS[year] || FESTIVOS[2026];

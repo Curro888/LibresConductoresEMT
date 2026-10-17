@@ -5,7 +5,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { db } from '../config/firebase';
 import { ref, onValue, update } from 'firebase/database';
-import { equipoBase, mesesArr, getDiasLibres, esFestivo, TURNOS_DISPONIBLES } from '../config/datos';
+import { equipoBase, mesesArr, getDiasLibres, esFestivo } from '../config/datos';
+import PerfilConductorForm, { PERFIL_VACIO, validarPerfil, perfilAMiembro, textoPerfil } from '../components/PerfilConductorForm';
 import { useTheme } from '../context/ThemeContext';
 import { APP_VERSION } from '../config/version';
 
@@ -20,8 +21,7 @@ export default function AjustesScreen({ navigation }) {
     const [modalAcercaDe, setModalAcercaDe] = useState(false);
     const [esAdmin, setEsAdmin] = useState(false);
     const [editNombre, setEditNombre] = useState('');
-    const [editGrupo, setEditGrupo] = useState('');
-    const [editTurno, setEditTurno] = useState('73/27');
+    const [editPerfil, setEditPerfil] = useState(PERFIL_VACIO);
     const [fotoPerfil, setFotoPerfil] = useState(null);
 
     useEffect(() => {
@@ -32,8 +32,12 @@ export default function AjustesScreen({ navigation }) {
                 const s = JSON.parse(raw);
                 setSesion(s);
                 setEditNombre(s.miNombreCompleto || '');
-                setEditGrupo(String(s.miGrupoSesion || ''));
-                setEditTurno(s.miTipoSesion || '73/27');
+                const mp = s.miPerfil || {};
+                setEditPerfil({
+                    g: String(mp.g || s.miGrupoSesion || ''),
+                    t: mp.t || s.miTipoSesion || '',
+                    c: !!mp.c, l: mp.l || '', tu: mp.tu || '', e: mp.e || ''
+                });
                 const foto = await AsyncStorage.getItem('fotoPerfil');
                 if (foto) setFotoPerfil(foto);
                 unsubCambios = onValue(ref(db, 'cambios/' + s.miID), snap => setCambios(snap.val() || {}));
@@ -58,21 +62,36 @@ export default function AjustesScreen({ navigation }) {
 
     async function guardarPerfil() {
         if (!editNombre.trim()) { Alert.alert('⚠️', 'El nombre no puede estar vacío.'); return; }
-        const grupo = parseInt(editGrupo);
-        if (isNaN(grupo) || grupo < 1 || grupo > 15) { Alert.alert('⚠️', 'El grupo debe ser entre 1 y 15.'); return; }
+        const errPerfil = validarPerfil(editPerfil);
+        if (errPerfil) { Alert.alert('⚠️', errPerfil); return; }
+        const m = perfilAMiembro(editPerfil);
 
-        const nuevaSesion = { ...sesion, miNombreCompleto: editNombre.trim(), miGrupoSesion: grupo, miTipoSesion: editTurno };
+        const nuevaSesion = { ...sesion, miNombreCompleto: editNombre.trim(), miGrupoSesion: m.g, miTipoSesion: m.t, miPerfil: m };
         setSesion(nuevaSesion);
         await AsyncStorage.setItem('sesion2026', JSON.stringify(nuevaSesion));
 
-        // Actualizar también en Firebase si está en modo grupo
+        // Actualizar también en Firebase si está en modo grupo (mi ficha dentro del grupo).
+        // Los campos que ya no aplican (p. ej. línea y turno al pasar a correturnos) se borran con null.
         if (sesion.modoGrupo && sesion.grupoActual && sesion.miID) {
-            const miembros = equipoBase;
-            const idx = miembros.findIndex(p => p.id === sesion.miID);
-            if (idx !== -1) {
-                const nuevaLista = [...miembros];
-                nuevaLista[idx] = { ...nuevaLista[idx], n: editNombre.trim(), g: grupo, t: editTurno };
-                await update(ref(db, 'grupos/' + sesion.grupoActual), { miembros: nuevaLista });
+            try {
+                await update(ref(db, 'grupos/' + sesion.grupoActual + '/miembros/' + sesion.miID), {
+                    n: editNombre.trim(),
+                    id: sesion.miID,
+                    g: m.g, t: m.t, c: m.c,
+                    l: m.l ?? null, tu: m.tu ?? null, e: m.e ?? null
+                });
+                // Mantener también el acceso rápido guardado en el móvil
+                const raw = await AsyncStorage.getItem('misGrupos2026');
+                const lista = raw ? JSON.parse(raw) : [];
+                const i = lista.findIndex(g => g.codigo === sesion.grupoActual);
+                if (i >= 0) {
+                    lista[i] = { ...lista[i], nombre: editNombre.trim(), tipo: m.t, grupoLibres: m.g, perfil: m };
+                    await AsyncStorage.setItem('misGrupos2026', JSON.stringify(lista));
+                }
+            } catch (e) {
+                Alert.alert('⚠️ Guardado solo en este móvil', 'No se pudo actualizar tu ficha en el grupo (¿sin conexión?). Inténtalo de nuevo con internet para que tus compañeros vean el cambio.');
+                setModalPerfil(false);
+                return;
             }
         }
         setModalPerfil(false);
@@ -193,7 +212,7 @@ export default function AjustesScreen({ navigation }) {
                             }
                             <View>
                                 <Text style={s.cardTitulo}>👤 Mi perfil</Text>
-                                <Text style={s.cardSub}>{sesion?.miNombreCompleto || ''} · G{sesion?.miGrupoSesion} · {sesion?.miTipoSesion}</Text>
+                                <Text style={s.cardSub}>{sesion?.miNombreCompleto || ''} · {textoPerfil(sesion?.miPerfil || { g: sesion?.miGrupoSesion, t: sesion?.miTipoSesion })}</Text>
                             </View>
                         </View>
                         <Text style={s.flecha}>▶</Text>
@@ -325,7 +344,8 @@ export default function AjustesScreen({ navigation }) {
             {/* Modal editar perfil */}
             <Modal visible={modalPerfil} transparent animationType="slide" onRequestClose={() => setModalPerfil(false)}>
                 <View style={s.overlayBottom}>
-                    <View style={s.modalCard}>
+                    <View style={[s.modalCard, { maxHeight: '92%' }]}>
+                      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                         <Text style={s.modalTitulo}>👤 Editar perfil</Text>
 
                         {/* Foto */}
@@ -342,17 +362,7 @@ export default function AjustesScreen({ navigation }) {
                         <Text style={s.modalLabel}>Nombre completo</Text>
                         <TextInput style={s.modalInput} value={editNombre} onChangeText={setEditNombre} placeholder="Tu nombre" placeholderTextColor={theme.textoTenue} maxLength={50} />
 
-                        <Text style={s.modalLabel}>Grupo (1-15)</Text>
-                        <TextInput style={s.modalInput} value={editGrupo} onChangeText={setEditGrupo} placeholder="Ej: 4" placeholderTextColor={theme.textoTenue} keyboardType="numeric" maxLength={2} />
-
-                        <Text style={s.modalLabel}>Turno</Text>
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-                            {TURNOS_DISPONIBLES.map(t => (
-                                <TouchableOpacity key={t} style={[s.turnoBtn, editTurno === t && s.turnoBtnActive]} onPress={() => setEditTurno(t)}>
-                                    <Text style={[s.turnoBtnTexto, editTurno === t && s.turnoBtnTextoActive]}>{t}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                        <PerfilConductorForm value={editPerfil} onChange={setEditPerfil} />
 
                         <View style={{ flexDirection: 'row', gap: 8, marginTop: 20 }}>
                             <TouchableOpacity style={s.btnCancelarModal} onPress={() => setModalPerfil(false)}>
@@ -362,6 +372,7 @@ export default function AjustesScreen({ navigation }) {
                                 <Text style={s.btnGuardarModalTexto}>Guardar</Text>
                             </TouchableOpacity>
                         </View>
+                      </ScrollView>
                     </View>
                 </View>
             </Modal>
@@ -371,7 +382,7 @@ export default function AjustesScreen({ navigation }) {
                 <View style={s.overlay}>
                     <View style={s.acercaDeCard}>
                         <Text style={s.acercaDeEmoji}>📅</Text>
-                        <Text style={s.acercaDeNombre}>Libres EMT</Text>
+                        <Text style={s.acercaDeNombre}>Libres Conductores EMT</Text>
                         <Text style={s.acercaDeVersion}>Versión {APP_VERSION}</Text>
                         <Text style={s.acercaDeTexto}>
                             App para gestionar turnos, cambios y coordinación con el equipo.

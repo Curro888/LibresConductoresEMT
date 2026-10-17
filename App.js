@@ -54,7 +54,7 @@ async function mostrarAvisoBateriaSiProcede() {
 
         Alert.alert(
             '🔋 Un paso más para los avisos',
-            'Para que te lleguen bien los avisos de cambios y solicitudes (sobre todo con el móvil bloqueado), este teléfono necesita que excluyas "Libres EMT" del ahorro de batería.\n\n¿Quieres abrir esos ajustes ahora?',
+            'Para que te lleguen bien los avisos de cambios y solicitudes (sobre todo con el móvil bloqueado), este teléfono necesita que excluyas "Libres Conductores EMT" del ahorro de batería.\n\n¿Quieres abrir esos ajustes ahora?',
             [
                 { text: 'Más tarde', style: 'cancel' },
                 { text: 'Abrir ajustes', onPress: () => {

@@ -9,6 +9,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { db } from '../config/firebase';
 import { ref, onValue } from 'firebase/database';
 import { equipoBase, mesesArr, diasSemanaArr, getDiasLibres, leerDia } from '../config/datos';
+import { textoPerfil } from '../components/PerfilConductorForm';
 import { useTheme } from '../context/ThemeContext';
 
 function esLibreHoy(grupo, turno, mIdx, d, cambios) {
@@ -179,7 +180,7 @@ export default function CompanerosScreen({ navigation }) {
                                     {conectado && <View style={s.puntito} />}
                                 </View>
                                 <Text style={s.detalle}>
-                                    🌙 G{p.g} · {p.t} · {esLibre ? 'Libra' : 'Trabaja'}
+                                    🚌 {textoPerfil(p)} · {esLibre ? 'Libra' : 'Trabaja'}
                                 </Text>
                             </View>
                             <View style={[s.estadoIcono, { backgroundColor: esLibre ? theme.celdaLibre : theme.primarioClaro }]}>

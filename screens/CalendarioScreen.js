@@ -8,7 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { db } from '../config/firebase';
 import { ref, onValue, set, remove, update, push, get } from 'firebase/database';
-import { equipoBase, mesesArr, getDiasLibres, esFestivo, getGruposLibres, MAX_LIBRES_VAC, claveDia, leerDia, partesDia, claveDiaActual, esDiaLibre } from '../config/datos';
+import { textoPerfil } from '../components/PerfilConductorForm';
+import { equipoBase, mesesArr, getDiasLibres, getDiasEspeciales, esFestivo, getGruposLibres, MAX_LIBRES_VAC, claveDia, leerDia, partesDia, claveDiaActual, esDiaLibre } from '../config/datos';
 import { useTheme } from '../context/ThemeContext';
 import { useNetworkStatus } from '../hooks/useNetworkStatus'; // añadido: aviso de sin conexión
 import { enviarPushA } from '../services/notifications';
@@ -661,6 +662,10 @@ export default function CalendarioScreen({ navigation, route }) {
         const dias = getDiasEnMes(anio, mIdx);
         const start = getPrimerDia(anio, mIdx);
         const libresBase = diasLibresBase[mIdx] || [];
+        // Días libres con color propio: los del subgrupo (azul) y los LRJ (verde)
+        const esp = getDiasEspeciales(anio, grupo, turno);
+        const subgrupoMes = esp.subgrupo[mIdx] || [];
+        const lrjMes = esp.lrj[mIdx] || [];
         const hoy = new Date();
         const esHoy = (d) => hoy.getFullYear() === anio && hoy.getMonth() === mIdx && hoy.getDate() === d;
         const esDiaA = (d) => modoSeleccion && modoSeleccion.diaA === d && modoSeleccion.mIdxA === mIdx;
@@ -681,6 +686,10 @@ export default function CalendarioScreen({ navigation, route }) {
             }
             let bgColor = esLibreReal ? theme.celdaLibre : theme.celdaTrabajo;
             let textColor = esLibreReal ? theme.celdaLibreTexto : theme.celdaTrabajoTexto;
+            if (esLibre && esLibreReal) {
+                if (lrjMes.includes(d)) { bgColor = theme.celdaLrj; textColor = theme.celdaLrjTexto; }
+                else if (subgrupoMes.includes(d)) { bgColor = theme.celdaSubgrupo; textColor = theme.celdaSubgrupoTexto; }
+            }
 
             if (festivo) { bgColor = '#ef4444'; textColor = esLibreReal ? '#ffffff' : '#000000'; }
             if (cambio) {
@@ -737,14 +746,14 @@ export default function CalendarioScreen({ navigation, route }) {
                     {libran.length ? libran.map(p => (
                         <View key={p.id} style={s.panelFila}>
                             <Text style={s.panelNombre}>{p.n}</Text>
-                            <Text style={s.panelSub}>G{p.g} · {p.t}</Text>
+                            <Text style={s.panelSub}>{textoPerfil(p)}</Text>
                         </View>
                     )) : <Text style={s.panelVacio}>Ninguno</Text>}
                     <Text style={[s.panelSeccion, { color: '#3b82f6', marginTop: 12 }]}>🚌 TRABAJAN ({trabajan.length})</Text>
                     {trabajan.length ? trabajan.map(p => (
                         <View key={p.id} style={s.panelFila}>
                             <Text style={s.panelNombre}>{p.n}</Text>
-                            <Text style={s.panelSub}>G{p.g} · {p.t}</Text>
+                            <Text style={s.panelSub}>{textoPerfil(p)}</Text>
                         </View>
                     )) : <Text style={s.panelVacio}>Ninguno</Text>}
                 </ScrollView>
@@ -809,7 +818,7 @@ export default function CalendarioScreen({ navigation, route }) {
                                     });
                                 }}>
                                     <Text style={[s.menuItemTexto, { color: '#1e1b4b' }]}>{item.n}</Text>
-                                    <Text style={{ fontSize: 12, color: '#94a3b8' }}>G{item.g} · {item.t}</Text>
+                                    <Text style={{ fontSize: 12, color: '#94a3b8' }}>{textoPerfil(item)}</Text>
                                 </TouchableOpacity>
                             )}
                         />
