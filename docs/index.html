@@ -464,7 +464,7 @@ function abrirPanelDia(y,m,d){
   if(nota)h+='<div class="pf">📝 '+esc(nota.texto||'')+'</div>';
   if(S.modoGrupo&&miembros.length){
     const q=quienesEseDia(y,m,d),num=p=>/^\d+$/.test(String(p.e||''))?+p.e:1e9,ord=a=>esCT()?a.slice().sort((a,b)=>num(a)-num(b)):a;
-    const li=a=>a.length?ord(a).map(p=>'<div class="pf"><b>'+(esCT()&&p.e?'Nº '+esc(p.e)+' · ':'')+esc(p.n)+'</b><small>'+esc(textoPerfil(p))+'</small></div>').join(''):'<div class="small">Ninguno</div>';
+    const li=a=>a.length?ord(a).map(p=>'<div class="pf"><b>'+esc(p.n)+'</b><small>'+(esCT()?'Emp. '+esc(p.id)+' · ':'')+esc(textoPerfil(p))+'</small></div>').join(''):'<div class="small">Ninguno</div>';
     h+='<div class="ps" style="color:#ef4444">🏠 LIBRAN ('+q.libran.length+')</div>'+li(q.libran)+'<div class="ps" style="color:#3b82f6">🚌 TRABAJAN ('+q.trab.length+')</div>'+li(q.trab);
   }
   h+='</div><button class="btn fill" data-pmenu="1">✏️ Marcar / cambios y más</button><div class="small" style="text-align:center;margin-top:6px">Mantén pulsado un día para abrir estas opciones directamente</div>';
@@ -687,11 +687,11 @@ function pintaCT(){
   const cont=$('ctlista');if(!cont)return;
   const hoy=new Date(),y=hoy.getFullYear(),m=hoy.getMonth(),d=hoy.getDate(),num=p=>/^\d+$/.test(String(p.e||''))?+p.e:1e9;
   let L=miembros.slice().sort((a,b)=>num(a)-num(b)||String(a.n).localeCompare(String(b.n)));
-  if(CTQ)L=L.filter(p=>String(p.e||'').indexOf(CTQ)===0);
+  if(CTQ)L=L.filter(p=>String(p.id||'').indexOf(CTQ)>=0);
   let h='<div class="small" style="margin:0 0 8px">'+miembros.length+' correturnos en la app'+(CTQ?' · '+L.length+' resultado'+(L.length===1?'':'s'):'')+'</div>';
   if(!L.length)h+='<div class="card small">'+(miembros.length?'Nadie con ese número todavía.':'Cargando…')+'</div>';
   h+=L.map(p=>{const cam=p.id===S.miID?cambios:(cambiosTodos[p.id]||{}),libre=esLibreFinal(y,p.g,p.t,m,d,cam);
-    return '<div class="fila'+(p.id===S.miID?' yo':'')+'" data-p="'+esc(p.id)+'"><div class="ico'+(libre?' libre':'')+'">'+(libre?'🏠':'🚌')+'</div><div class="t"><b>'+(p.e?'Nº '+esc(p.e)+' · ':'')+esc(p.n)+(p.id===S.miID?' (yo)':'')+'</b><div>'+esc(etiquetaGrupo(p.g,p.t))+' · hoy '+(libre?'libra':'trabaja')+'</div></div><div style="font-size:20px">📅</div></div>'}).join('');
+    return '<div class="fila'+(p.id===S.miID?' yo':'')+'" data-p="'+esc(p.id)+'"><div class="ico'+(libre?' libre':'')+'">'+(libre?'🏠':'🚌')+'</div><div class="t"><b>'+esc(p.n)+(p.id===S.miID?' (yo)':'')+'</b><div>Emp. '+esc(p.id)+(p.e?' · Esc. '+esc(p.e):'')+' · '+esc(etiquetaGrupo(p.g,p.t))+' · hoy '+(libre?'libra':'trabaja')+'</div></div><div style="font-size:20px">📅</div></div>'}).join('');
   cont.innerHTML=h;
 }
 function vComp(){
@@ -700,7 +700,7 @@ function vComp(){
   if(!S.modoGrupo){h+='<div class="card small">Estás en modo individual. Para ver a tus compañeros, cierra sesión y entra o crea un grupo.</div>';$('main').innerHTML=h;return}
   if(esCT()){
     const nuevo=!$('ctq')||$('main').dataset.t!=='comp';
-    if(nuevo){$('main').innerHTML=h+'<input type="tel" id="ctq" placeholder="🔎 Buscar por número de escalafón" style="width:100%;padding:12px;font-size:16px;margin:4px 0 10px;border:1px solid #cbd5e1;border-radius:12px;box-sizing:border-box" value="'+esc(CTQ)+'"><div id="ctlista"></div>';
+    if(nuevo){$('main').innerHTML=h+'<input type="tel" id="ctq" placeholder="🔎 Buscar por número de empleado" style="width:100%;padding:12px;font-size:16px;margin:4px 0 10px;border:1px solid #cbd5e1;border-radius:12px;box-sizing:border-box" value="'+esc(CTQ)+'"><div id="ctlista"></div>';
       $('ctq').addEventListener('input',()=>{CTQ=$('ctq').value.replace(/\D/g,'');pintaCT()})}
     pintaCT();return;
   }
