@@ -342,7 +342,7 @@ function iniciarSel(tipo,dA,mA,comp){SEL={tipo:tipo,dA:dA,mA:mA,comp:comp,anio:a
 function bannerSel(){
   let b='';
   if(PEND)b+='<div class="card small">⏳ Esperando la respuesta de <b>'+esc(PEND.compNom)+'</b> a tu solicitud de cambio.</div>';
-  if(SEL){const f=SEL.dA+'/'+(SEL.mA+1);b+='<div class="card" style="position:sticky;top:0;z-index:5;background:var(--pri);color:#fff"><b>'+(SEL.tipo==='propio'?'🔄 Cambio propio':'🤝 Cambio con compañero')+'</b><div style="font-size:13px;margin-top:4px">Trabajarás el '+f+'. Pulsa el día que quieres librar.</div><button class="btn" style="background:#fff;border-color:#fff;margin-top:8px" data-cancelsel="1">Cancelar</button></div>'}
+  if(SEL){const f=SEL.dA+'/'+(SEL.mA+1);b+='<div class="card" style="position:sticky;top:0;z-index:5;background:var(--pri);color:#fff"><b>'+(SEL.tipo==='propio'?'🔄 Cambio propio':'🤝 Cambio con compañero')+'</b><div style="font-size:13px;margin-top:4px">Trabajarás el '+f+'. '+(SEL.tipo==='comp'?'Ahora marca, en el calendario de tu compañero, el día que quieres librar.':'Pulsa el día que quieres librar.')+'</div><button class="btn" style="background:#fff;border-color:#fff;margin-top:8px" data-cancelsel="1">Cancelar</button></div>'}
   return b;
 }
 async function confirmarSel(dB,mB){
@@ -379,8 +379,10 @@ document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()
 
 // --- Calendario propio ---
 function vCal(){
-  const {g,t}=misDatos();let h=bannerSel()+selectorAnio()+LEYENDA+avisoSinDatos(g,t);
-  for(let m=0;m<12;m++)h+=mesHTML(anio,m,g,t,cambios,{click:1});
+  let {g,t}=misDatos(),cam=cambios,pc=SEL&&SEL.tipo==='comp'?miembros.find(x=>x.id===SEL.comp):null;
+  if(pc){g=pc.g;t=pc.t;cam=cambiosTodos[pc.id]||{}}
+  let h=bannerSel()+(pc?'<div class="card small">📅 Calendario de <b>'+esc(pc.n)+'</b> · '+esc(textoPerfil(pc))+'</div>':'')+selectorAnio()+LEYENDA+avisoSinDatos(g,t);
+  for(let m=0;m<12;m++)h+=mesHTML(anio,m,g,t,cam,{click:1});
   const primera=!$('main').dataset.sc;
   $('main').innerHTML=h;
   if(primera){$('main').dataset.sc='1';if(anio===new Date().getFullYear()){const mm=$('main').querySelectorAll('.mes')[new Date().getMonth()];if(mm)setTimeout(()=>{$('main').scrollTop=mm.offsetTop-10},30)}}
