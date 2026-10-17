@@ -186,7 +186,7 @@ export default function CompanerosScreen({ navigation }) {
             </View>
             {sesion.modoGrupo && sesion.grupoActual === 'CT' && (
                 <TextInput
-                    style={{ backgroundColor: theme.tarjeta || '#fff', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginHorizontal: 16, marginBottom: 8, color: theme.texto || '#111' }}
+                    style={{ backgroundColor: theme.card, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginHorizontal: 16, marginBottom: 8, color: theme.texto, fontSize: 15 }}
                     placeholder="🔎 Buscar por número de empleado"
                     placeholderTextColor="#94a3b8"
                     keyboardType="numeric"
