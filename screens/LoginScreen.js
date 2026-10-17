@@ -5,8 +5,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../config/firebase';
-import { ref, get, set } from 'firebase/database';
-import PerfilConductorForm, { PERFIL_VACIO, validarPerfil, perfilAMiembro, textoPerfil } from '../components/PerfilConductorForm';
+import { ref, get, set, update } from 'firebase/database';
+import PerfilConductorForm, { PERFIL_VACIO, PERFIL_CORRETURNOS, CODIGO_CORRETURNOS, escalafonValido, validarPerfil, perfilAMiembro, textoPerfil } from '../components/PerfilConductorForm';
 import { etiquetaGrupo } from '../config/libresConductores';
 import { withFirebaseErrorHandling } from '../utils/firebaseErrorHandler';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
@@ -21,6 +21,11 @@ export default function LoginScreen({ navigation }) {
     const [indNombre, setIndNombre] = useState('');
     const [indID, setIndID] = useState('');
     const [perfilInd, setPerfilInd] = useState(PERFIL_VACIO);
+
+    // Correturnos (grupo abierto, ordenado por escalafón)
+    const [ctNombre, setCtNombre] = useState('');
+    const [ctID, setCtID] = useState('');
+    const [perfilCT, setPerfilCT] = useState(PERFIL_CORRETURNOS);
 
     // Unirse a un grupo existente
     const [grupoCodigo, setGrupoCodigo] = useState('');
@@ -159,6 +164,38 @@ export default function LoginScreen({ navigation }) {
         navigation.replace('Main', sesion);
     }
 
+    async function entrarCorreturnos() {
+        if (!isConnected) { Alert.alert('Sin conexión', 'Necesitas internet para entrar en Correturnos.'); return; }
+        const nombre = ctNombre.trim();
+        const id = ctID.trim();
+        if (!nombre || !id) { Alert.alert('Error', 'Escribe tu nombre y tu número de empleado'); return; }
+        const errPerfil = validarPerfil(perfilCT);
+        if (errPerfil) { Alert.alert('Error', errPerfil); return; }
+        if (!escalafonValido(perfilCT.e)) { Alert.alert('Error', 'Escribe tu escalafón en la empresa (solo el número)'); return; }
+        const m = { ...perfilAMiembro({ ...perfilCT, c: true }), c: true };
+
+        const result = await withFirebaseErrorHandling(async () => {
+            const snap = await get(ref(db, `grupos/${CODIGO_CORRETURNOS}`));
+            const g = snap.val();
+            // El grupo se crea la primera vez que alguien entra (sin contraseña, es abierto).
+            if (!g || !g.nombre) {
+                await update(ref(db, `grupos/${CODIGO_CORRETURNOS}`), { nombre: 'Correturnos', pass: '', creador: id });
+            }
+            await set(ref(db, `grupos/${CODIGO_CORRETURNOS}/miembros/${id}`), { n: nombre, id, ...m });
+            return true;
+        });
+        if (!result) return;
+
+        const sesion = {
+            miID: id, miNombreCompleto: nombre,
+            modoGrupo: true, grupoActual: CODIGO_CORRETURNOS,
+            miGrupoSesion: m.g, miTipoSesion: m.t, miPerfil: m
+        };
+        await AsyncStorage.setItem('sesion2026', JSON.stringify(sesion));
+        await guardarGrupoEnLista({ codigo: CODIGO_CORRETURNOS, id, nombre, tipo: m.t, grupoLibres: m.g, perfil: m });
+        navigation.replace('Main', sesion);
+    }
+
     async function crearGrupo() {
         if (!isConnected) { Alert.alert('Sin conexión', 'Necesitas internet para crear un grupo.'); return; }
 
@@ -237,6 +274,9 @@ export default function LoginScreen({ navigation }) {
                     <TouchableOpacity style={[s.btnGrande, { marginTop: 8 }]} onPress={() => setModo('grupoTipo')}>
                         <Text style={s.btnGrandeTexto}>➕ Otro grupo</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity style={[s.btnGrande, { marginTop: 8 }]} onPress={() => setModo('correturnos')}>
+                        <Text style={s.btnGrandeTexto}>🔁 Correturnos</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={[s.btnGrande, { marginTop: 8, borderColor: '#94a3b8' }]} onPress={() => setModo('individual')}>
                         <Text style={[s.btnGrandeTexto, { color: '#64748b' }]}>👤 Individual</Text>
                     </TouchableOpacity>
@@ -253,6 +293,10 @@ export default function LoginScreen({ navigation }) {
                         <Text style={s.btnGrandeTexto}>👥 Grupo</Text>
                         <Text style={s.btnGrandeSubtexto}>Con compañeros</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity style={[s.btnGrande, { marginTop: 12 }]} onPress={() => setModo('correturnos')}>
+                        <Text style={s.btnGrandeTexto}>🔁 Correturnos</Text>
+                        <Text style={s.btnGrandeSubtexto}>Todos los correturnos, por escalafón</Text>
+                    </TouchableOpacity>
                 </View>
             )}
 
@@ -265,6 +309,23 @@ export default function LoginScreen({ navigation }) {
                     <PerfilConductorForm value={perfilInd} onChange={setPerfilInd} />
                     <TouchableOpacity style={s.btnPrimario} onPress={entrarIndividual}>
                         <Text style={s.btnPrimarioTexto}>Entrar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setModo(gruposGuardados.length > 0 ? 'selector' : null)} style={s.btnVolver}>
+                        <Text style={s.btnVolverTexto}>← Volver</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {modo === 'correturnos' && (
+                <View style={s.card}>
+                    <Text style={s.cardTitulo}>🔁 Correturnos</Text>
+                    <Text style={s.label}>Tu nombre</Text>
+                    <TextInput style={s.input} placeholder="Ej: Curro" value={ctNombre} onChangeText={setCtNombre} />
+                    <Text style={s.label}>Tu número de empleado</Text>
+                    <TextInput style={s.input} placeholder="Ej: 1234" keyboardType="numeric" value={ctID} onChangeText={setCtID} />
+                    <PerfilConductorForm value={perfilCT} onChange={setPerfilCT} soloCorreturnos />
+                    <TouchableOpacity style={s.btnPrimario} onPress={entrarCorreturnos}>
+                        <Text style={s.btnPrimarioTexto}>Entrar en Correturnos</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setModo(gruposGuardados.length > 0 ? 'selector' : null)} style={s.btnVolver}>
                         <Text style={s.btnVolverTexto}>← Volver</Text>

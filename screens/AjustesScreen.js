@@ -4,9 +4,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { db } from '../config/firebase';
-import { ref, onValue, update } from 'firebase/database';
+import { ref, onValue, update, get } from 'firebase/database';
 import { equipoBase, mesesArr, getDiasLibres, esFestivo } from '../config/datos';
-import PerfilConductorForm, { PERFIL_VACIO, validarPerfil, perfilAMiembro, textoPerfil } from '../components/PerfilConductorForm';
+import PerfilConductorForm, { PERFIL_VACIO, escalafonValido, validarPerfil, perfilAMiembro, textoPerfil } from '../components/PerfilConductorForm';
 import { useTheme } from '../context/ThemeContext';
 import { APP_VERSION } from '../config/version';
 
@@ -65,6 +65,43 @@ export default function AjustesScreen({ navigation }) {
         const errPerfil = validarPerfil(editPerfil);
         if (errPerfil) { Alert.alert('⚠️', errPerfil); return; }
         const m = perfilAMiembro(editPerfil);
+        const enCT = !!(sesion.modoGrupo && sesion.grupoActual === 'CT' && sesion.miID);
+
+        if (enCT && m.c && !escalafonValido(m.e)) {
+            Alert.alert('⚠️', 'En Correturnos el escalafón es obligatorio (solo el número).');
+            return;
+        }
+
+        // Pasa a línea fija: sale de Correturnos y los que van detrás suben un puesto.
+        if (enCT && !m.c) {
+            try {
+                const snap = await get(ref(db, 'grupos/CT/miembros'));
+                const todos = snap.val() || {};
+                const miE = parseInt((todos[sesion.miID] || {}).e, 10);
+                const cambios = {};
+                cambios['grupos/CT/miembros/' + sesion.miID] = null;
+                cambios['presencia/CT/' + sesion.miID] = null;
+                if (!isNaN(miE)) {
+                    Object.keys(todos).forEach(k => {
+                        if (k === sesion.miID) return;
+                        const e = parseInt((todos[k] || {}).e, 10);
+                        if (!isNaN(e) && e > miE) cambios['grupos/CT/miembros/' + k + '/e'] = String(e - 1);
+                    });
+                }
+                await update(ref(db), cambios);
+                const raw = await AsyncStorage.getItem('misGrupos2026');
+                const lista = (raw ? JSON.parse(raw) : []).filter(g => g.codigo !== 'CT');
+                await AsyncStorage.setItem('misGrupos2026', JSON.stringify(lista));
+                const sinCT = { ...sesion, miNombreCompleto: editNombre.trim(), miGrupoSesion: m.g, miTipoSesion: m.t, miPerfil: m, modoGrupo: false, grupoActual: null };
+                await AsyncStorage.setItem('sesion2026', JSON.stringify(sinCT));
+                setModalPerfil(false);
+                Alert.alert('✅ Has salido de Correturnos', 'Tu perfil se ha guardado con línea fija y los correturnos que iban detrás han subido un puesto.');
+                navigation.replace('Main', sinCT);
+            } catch (e) {
+                Alert.alert('⚠️', 'No se pudo salir de Correturnos (¿sin conexión?). Inténtalo de nuevo con internet.');
+            }
+            return;
+        }
 
         const nuevaSesion = { ...sesion, miNombreCompleto: editNombre.trim(), miGrupoSesion: m.g, miTipoSesion: m.t, miPerfil: m };
         setSesion(nuevaSesion);
@@ -362,7 +399,7 @@ export default function AjustesScreen({ navigation }) {
                         <Text style={s.modalLabel}>Nombre completo</Text>
                         <TextInput style={s.modalInput} value={editNombre} onChangeText={setEditNombre} placeholder="Tu nombre" placeholderTextColor={theme.textoTenue} maxLength={50} />
 
-                        <PerfilConductorForm value={editPerfil} onChange={setEditPerfil} />
+                        <PerfilConductorForm value={editPerfil} onChange={setEditPerfil} escalafonObligatorio={!!(sesion && sesion.modoGrupo && sesion.grupoActual === "CT")} avisoSalirCT={!!(sesion && sesion.modoGrupo && sesion.grupoActual === "CT")} />
 
                         <View style={{ flexDirection: 'row', gap: 8, marginTop: 20 }}>
                             <TouchableOpacity style={s.btnCancelarModal} onPress={() => setModalPerfil(false)}>

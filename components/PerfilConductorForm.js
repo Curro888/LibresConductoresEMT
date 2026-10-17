@@ -10,6 +10,10 @@ import { SISTEMAS_CONDUCTORES, sistemaDe, subgruposDe, etiquetaGrupo } from '../
 //   tu = turno (número)                                  — solo si c es false
 //   e  = escalafón (en la línea si tiene línea; en la empresa si es correturnos)
 export const PERFIL_VACIO = { g: '', t: '', c: false, l: '', tu: '', e: '' };
+export const PERFIL_CORRETURNOS = { g: '', t: '', c: true, l: '', tu: '', e: '' };
+// Código fijo del grupo abierto de correturnos (el mismo que usa la versión web).
+export const CODIGO_CORRETURNOS = 'CT';
+export const escalafonValido = (e) => /^[0-9]+$/.test(String(e || '').trim());
 
 export function validarPerfil(p) {
     if (!p.g || !p.t) return 'Elige tu grupo y tu subgrupo';
@@ -43,7 +47,9 @@ export function textoPerfil(m) {
 
 const soloNumeros = (txt) => String(txt).replace(/[^0-9]/g, '');
 
-export default function PerfilConductorForm({ value, onChange }) {
+// soloCorreturnos: en la entrada a Correturnos (no hay opción de línea fija y el escalafón es obligatorio).
+// escalafonObligatorio / avisoSalirCT: al editar el perfil dentro de Correturnos.
+export default function PerfilConductorForm({ value, onChange, soloCorreturnos = false, escalafonObligatorio = false, avisoSalirCT = false }) {
     const v = { ...PERFIL_VACIO, ...(value || {}) };
     const set = (campo, dato) => onChange({ ...v, [campo]: dato });
     // Sistema de libres (convencional / búhos / R.S.N): sale del grupo guardado; si aún no hay grupo, de lo que elija.
@@ -96,15 +102,20 @@ export default function PerfilConductorForm({ value, onChange }) {
                 ))}
             </View>
 
-            <Text style={s.label}>¿Tienes línea asignada?</Text>
-            <View style={s.grid}>
+            {!soloCorreturnos && <Text style={s.label}>¿Tienes línea asignada?</Text>}
+            {avisoSalirCT && !v.c && (
+                <Text style={{ fontSize: 12, color: '#b45309', marginTop: 8 }}>
+                    Al guardar con línea fija saldrás de la lista de Correturnos y los que van detrás subirán un puesto.
+                </Text>
+            )}
+            {!soloCorreturnos && <View style={s.grid}>
                 <TouchableOpacity style={[s.btnAncho, !v.c && s.btnActivo]} onPress={() => { Keyboard.dismiss(); set('c', false); }}>
                     <Text style={[s.btnTexto, !v.c && s.btnTextoActivo]}>Sí, línea fija</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[s.btnAncho, v.c && s.btnActivo]} onPress={() => { Keyboard.dismiss(); onChange({ ...v, c: true, l: '', tu: '' }); }}>
                     <Text style={[s.btnTexto, v.c && s.btnTextoActivo]}>Correturnos</Text>
                 </TouchableOpacity>
-            </View>
+            </View>}
 
             {!v.c && (
                 <View>
@@ -115,7 +126,7 @@ export default function PerfilConductorForm({ value, onChange }) {
                 </View>
             )}
 
-            <Text style={s.label}>{(v.c ? 'Escalafón en la empresa' : 'Escalafón en la línea') + ' (opcional)'}</Text>
+            <Text style={s.label}>{(v.c ? 'Escalafón en la empresa' : 'Escalafón en la línea') + ((soloCorreturnos || (escalafonObligatorio && v.c)) ? ' (obligatorio)' : ' (opcional)')}</Text>
             <TextInput style={s.input} placeholder="Ej: 25 (puedes cambiarlo cuando quieras)" keyboardType="numeric" value={v.e} onChangeText={t => set('e', soloNumeros(t))} />
             {tecladoAlto > 0 && <View style={{ height: tecladoAlto }} />}
         </View>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    ActivityIndicator, Image, Alert
+    ActivityIndicator, Image, Alert, TextInput
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
@@ -35,6 +35,7 @@ export default function CompanerosScreen({ navigation }) {
     // Fotos personalizadas: solo se guardan en este móvil (AsyncStorage), nunca en Firebase.
     // Cada persona ve las fotos que ella misma ha puesto, no las que hayan puesto los demás.
     const [fotos, setFotos] = useState({});
+    const [busqueda, setBusqueda] = useState('');
     // Foto de perfil propia, la misma que se pone en Ajustes
     const [fotoPerfil, setFotoPerfil] = useState(null);
 
@@ -144,14 +145,22 @@ export default function CompanerosScreen({ navigation }) {
 
     const listaCompaneros = useMemo(() => {
         if (!sesion) return [];
-        return equipoActual.map(p => {
+        const esCT = sesion.modoGrupo && sesion.grupoActual === 'CT';
+        let base = equipoActual;
+        if (esCT) {
+            const q = busqueda.trim();
+            if (q) base = base.filter(p => String(p.id || '').indexOf(q) >= 0);
+            const num = (x) => /^[0-9]+$/.test(String(x || '')) ? parseInt(x, 10) : 1e9;
+            base = [...base].sort((a, b) => num(a.e) - num(b.e));
+        }
+        return base.map(p => {
             const esMio = p.id === sesion.miID;
             const cambios = cambiosTodos[p.id] || {};
             const esLibre = esLibreHoy(p.g, p.t, mIdx, d, cambios);
             const conectado = presencias[p.id] && (Date.now() - presencias[p.id].ts) < 120000;
             return { p, esMio, esLibre, conectado };
         });
-    }, [cambiosTodos, presencias, sesion, mIdx, d, equipoActual]);
+    }, [cambiosTodos, presencias, sesion, mIdx, d, equipoActual, busqueda]);
 
     const s = getStyles(theme);
 
@@ -175,6 +184,16 @@ export default function CompanerosScreen({ navigation }) {
                     </View>
                 </View>
             </View>
+            {sesion.modoGrupo && sesion.grupoActual === 'CT' && (
+                <TextInput
+                    style={{ backgroundColor: theme.tarjeta || '#fff', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginHorizontal: 16, marginBottom: 8, color: theme.texto || '#111' }}
+                    placeholder="🔎 Buscar por número de empleado"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="numeric"
+                    value={busqueda}
+                    onChangeText={setBusqueda}
+                />
+            )}
             <ScrollView showsVerticalScrollIndicator={false}>
                 {listaCompaneros.map(({ p, esMio, esLibre, conectado }) => {
                     const foto = esMio ? fotoPerfil : fotos[p.id];
@@ -200,7 +219,9 @@ export default function CompanerosScreen({ navigation }) {
                                     {conectado && <View style={s.puntito} />}
                                 </View>
                                 <Text style={s.detalle}>
-                                    🚌 {textoPerfil(p)} · {esLibre ? 'Libra' : 'Trabaja'}
+                                    🚌 {sesion.grupoActual === 'CT' && sesion.modoGrupo
+                                        ? `Emp. ${p.id} · Esc. ${p.e || '—'} · ${p.g ? 'Grupo ' + p.g + (p.t ? ' ' + p.t : '') : 'sin grupo'}`
+                                        : textoPerfil(p)} · {esLibre ? 'Libra' : 'Trabaja'}
                                 </Text>
                             </View>
                             <View style={[s.estadoIcono, { backgroundColor: esLibre ? theme.celdaLibre : theme.primarioClaro }]}>

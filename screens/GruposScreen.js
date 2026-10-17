@@ -171,7 +171,8 @@ export default function GruposScreen({ navigation }) {
 
     // Solo puede borrar el grupo quien lo creó, o alguien de la lista de administradores del proyecto.
     // Si el grupo es antiguo y no tiene "creador" guardado, solo un administrador puede borrarlo.
-    const puedeBorrarGrupo = sesion && (
+    const esCT = !!(sesion && sesion.modoGrupo && sesion.grupoActual === 'CT');
+    const puedeBorrarGrupo = sesion && !esCT && (
         !!administradores[sesion.miID] ||
         (creadorGrupo && sesion.miID === creadorGrupo)
     );
@@ -306,12 +307,12 @@ export default function GruposScreen({ navigation }) {
                     <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, padding: 12 }} contentContainerStyle={{ paddingBottom: 100 }}>
                         <View style={sc.infoHeader}>
                             <Text style={sc.infoTitulo}>👥 Compañeros del grupo</Text>
-                            <TouchableOpacity style={sc.btnAdd} onPress={() => {
+                            {!esCT && <TouchableOpacity style={sc.btnAdd} onPress={() => {
                                 setEditNombre(''); setEditID(''); setEditPerfil(PERFIL_VACIO);
                                 setModalEditar({ idx: -1 });
                             }}>
                                 <Text style={sc.btnAddTexto}>+ Añadir</Text>
-                            </TouchableOpacity>
+                            </TouchableOpacity>}
                         </View>
                         {sesion.grupoActual && (
                             <View style={sc.codigoCard}>
@@ -325,16 +326,16 @@ export default function GruposScreen({ navigation }) {
                                     <Text style={sc.miembroNombre}>{p.n}</Text>
                                     <Text style={sc.miembroDetalle}>ID: {p.id} · {textoPerfil(p)}</Text>
                                 </View>
-                                <TouchableOpacity style={sc.btnEditar} onPress={() => {
+                                {!esCT && <TouchableOpacity style={sc.btnEditar} onPress={() => {
                                     setEditNombre(p.n); setEditID(p.id);
                                     setEditPerfil({ g: String(p.g || ''), t: p.t || '', c: !!p.c, l: p.l || '', tu: p.tu || '', e: p.e || '' });
                                     setModalEditar({ idx });
                                 }}>
                                     <Text style={sc.btnEditarTexto}>✏️</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={sc.btnEliminarRapido} onPress={() => borrarMiembro(idx)}>
+                                </TouchableOpacity>}
+                                {!esCT && <TouchableOpacity style={sc.btnEliminarRapido} onPress={() => borrarMiembro(idx)}>
                                     <Text style={sc.btnEditarTexto}>🗑️</Text>
-                                </TouchableOpacity>
+                                </TouchableOpacity>}
                             </View>
                         ))}
 
