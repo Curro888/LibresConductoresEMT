@@ -138,6 +138,7 @@ let tab='cal', anio=anioInicial();
 let cambios={}, cambiosTodos={}, miembros=[], offs=[];
 let grVer={s:null,g:null,t:null};
 let hbTimer=null;
+let SEL=null,PEND=null,vistas=new Set(),vigPend=null;
 
 function guardarSesion(){LS.set('sesionLC',S)}
 function modal(html){$('modalc').innerHTML=html;$('modal').classList.remove('hide')}
@@ -269,7 +270,7 @@ $('main').addEventListener('click',e=>{
 });
 
 // ===== APP =====
-function limpiar(){offs.forEach(f=>{try{f()}catch(e){}});offs=[];if(hbTimer){clearInterval(hbTimer);hbTimer=null}}
+function limpiar(){if(vigPend){vigPend();vigPend=null}offs.forEach(f=>{try{f()}catch(e){}});offs=[];if(hbTimer){clearInterval(hbTimer);hbTimer=null}}
 async function iniciarApp(){
   limpiar();await authP;
   $('nav').classList.remove('hide');tab='cal';anio=anioInicial();cambios={};cambiosTodos={};miembros=[];grVer={s:null,g:null,t:null};
@@ -285,6 +286,77 @@ async function iniciarApp(){
       if(tab==='comp'||tab==='cal')render()});
     const hb=()=>db.ref('presencia/'+S.grupoActual+'/'+S.miID).set({ts:Date.now()}).catch(()=>{});hb();hbTimer=setInterval(hb,60000);
   }
+  vistas=new Set();SEL=null;
+  if(S.modoGrupo){
+    on(db.ref('solicitudes'),s=>{const t=s.val()||{};Object.keys(t).forEach(k=>{const so=t[k];if(so&&String(so.para)===String(S.miID)&&so.estado==='pendiente'&&!vistas.has(k)){vistas.add(k);mostrarSolicitud(k,so)}})});
+    vigilarPend();
+  }
+  render();
+}
+function vigilarPend(){
+  if(vigPend){vigPend();vigPend=null}
+  PEND=LS.get('solPendLC');if(!PEND||!S||!S.modoGrupo)return;
+  const r=db.ref('solicitudes/'+PEND.solKey);
+  const cb=sn=>{const so=sn.val();
+    if(!so){LS.del('solPendLC');PEND=null;render();return}
+    if(so.estado==='aceptada'||so.estado==='rechazada'){const nm=PEND.compNom,ok=so.estado==='aceptada';LS.del('solPendLC');PEND=null;r.remove();alert((ok?'✅ ':'❌ ')+nm+(ok?' aceptó':' rechazó')+' el cambio.');render()}};
+  r.on('value',cb);vigPend=()=>r.off('value',cb);
+}
+function mostrarSolicitud(key,so){
+  const rem=(miembros.find(x=>x.id===so.de)||{}).n||so.miNom||so.de;
+  modal('<h2>🤝 Solicitud de cambio</h2><p>'+esc(rem)+' quiere hacer un cambio contigo:</p><div class="card"><b>Tú libras el '+esc(so.f1)+'</b><br><b>y trabajas el '+esc(so.f2)+'</b></div><button class="btn fill" data-sol="1">✅ Aceptar</button><button class="btn red" data-sol="0">❌ Rechazar</button>');
+  $('modalc').onclick=ev=>{const b=ev.target.closest('[data-sol]');if(!b)return;responderSol(key,so,b.dataset.sol==='1')};
+}
+async function responderSol(key,so,ok){
+  try{
+    if(!ok){await db.ref('solicitudes/'+key).update({estado:'rechazada'});cerrarModal();return}
+    const u1=so.de,u2=so.para,an=so.anio||2026,ts=Date.now(),k1=claveDia(an,so.m1,so.d1),k2=claveDia(an,so.m2,so.d2),mi=so.miNom,co=so.compNom,f1=so.f1,f2=so.f2,up={};
+    up['cambios/'+u1+'/'+k1]={texto:'Haces (x '+co+' '+f2+')',clase:'b-inter',linkedUid:u2,linkedKey:k2};
+    up['cambios/'+u1+'/'+k2]={texto:'Libras (x '+co+' '+f1+')',clase:'b-cambio-libre',linkedUid:u2,linkedKey:k1};
+    up['cambios/'+u2+'/'+k1]={texto:'Libras (x '+mi+' '+f2+')',clase:'b-cambio-libre',linkedUid:u1,linkedKey:k2};
+    up['cambios/'+u2+'/'+k2]={texto:'Haces (x '+mi+' '+f1+')',clase:'b-inter',linkedUid:u1,linkedKey:k1};
+    up['historial2/'+u1+'/'+ts]={cat:'comp',ts:ts,con:co,otroUid:u2,diaTrabaja:f1,diaLibra:f2,anio:an,nota:''};
+    up['historial2/'+u2+'/'+ts]={cat:'comp',ts:ts,con:mi,otroUid:u1,diaTrabaja:f2,diaLibra:f1,anio:an,nota:''};
+    up['solicitudes/'+key+'/estado']='aceptada';
+    await db.ref().update(up);cerrarModal();alert('✅ Cambio aceptado. Se ha aplicado en los dos calendarios.');
+  }catch(e){alert('No se pudo completar: '+(e.code||e.message||e))}
+}
+function accionDia(y,m,d,c){
+  if(c==='propio'){iniciarSel('propio',d,m,null)}
+  else if(c==='comp'){
+    const otros=miembros.filter(x=>x.id!==S.miID);
+    modal('<h2>🤝 Cambio con compañero</h2><div class="small">Día que trabajarás: '+d+'/'+(m+1)+'. ¿Con quién?</div>'+otros.map(p=>'<button class="btn" data-cp="'+esc(p.id)+'">'+esc(p.n)+'<small>'+esc(textoPerfil(p))+'</small></button>').join('')+'<button class="btn" style="margin-top:14px" onclick="cerrarModal()">Cancelar</button>');
+    $('modalc').onclick=ev=>{const b=ev.target.closest('[data-cp]');if(!b)return;iniciarSel('comp',d,m,b.dataset.cp)};
+  }else marcarDia(y,m,d,c);
+}
+function iniciarSel(tipo,dA,mA,comp){SEL={tipo:tipo,dA:dA,mA:mA,comp:comp,anio:anio};cerrarModal();tab='cal';document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.dataset.t==='cal'));render()}
+function bannerSel(){
+  let b='';
+  if(PEND)b+='<div class="card small">⏳ Esperando la respuesta de <b>'+esc(PEND.compNom)+'</b> a tu solicitud de cambio.</div>';
+  if(SEL){const f=SEL.dA+'/'+(SEL.mA+1);b+='<div class="card" style="position:sticky;top:0;z-index:5;background:var(--pri);color:#fff"><b>'+(SEL.tipo==='propio'?'🔄 Cambio propio':'🤝 Cambio con compañero')+'</b><div style="font-size:13px;margin-top:4px">Trabajarás el '+f+'. Pulsa el día que quieres librar.</div><button class="btn" style="background:#fff;border-color:#fff;margin-top:8px" data-cancelsel="1">Cancelar</button></div>'}
+  return b;
+}
+async function confirmarSel(dB,mB){
+  const s=SEL;if(!s)return;
+  if(anio!==s.anio){alert('Elige el segundo día en el mismo año ('+s.anio+').');return}
+  if(dB===s.dA&&mB===s.mA){alert('Elige un día distinto.');return}
+  const f1=s.dA+'/'+(s.mA+1),f2=dB+'/'+(mB+1);
+  if(s.tipo==='propio'){
+    SEL=null;const g=S.miGrupoSesion,t=S.miTipoSesion;
+    const lA=libreBase(s.anio,g,t,s.mA,s.dA),lB=libreBase(s.anio,g,t,mB,dB),up={};
+    up['cambios/'+S.miID+'/'+claveDia(s.anio,s.mA,s.dA)]=lA?{clase:'b-inter',texto:'Haces (x '+f2+')'}:{clase:'b-cambio-libre',texto:'Libras (x '+f2+')'};
+    up['cambios/'+S.miID+'/'+claveDia(s.anio,mB,dB)]=lB?{clase:'b-inter',texto:'Haces (x '+f1+')'}:{clase:'b-cambio-libre',texto:'Libras (x '+f1+')'};
+    try{await db.ref().update(up);alert('✅ Cambio propio guardado: '+f1+' ↔ '+f2)}catch(e){alert('No se pudo guardar: '+(e.code||e.message||e))}
+    render();return;
+  }
+  const compNom=((miembros.find(x=>x.id===s.comp)||{}).n||s.comp).split(' ')[0],miNom=S.miNombreCompleto.split(' ')[0];
+  if(!confirm('🤝 Confirmar cambio\n\nTu día '+f1+': trabajarás\nTu día '+f2+': librarás\n\n'+compNom+':\nEl '+f1+' librará\nEl '+f2+' trabajará\n\n¿Enviar solicitud?'))return;
+  SEL=null;
+  try{
+    const r=db.ref('solicitudes').push();
+    await r.set({de:S.miID,para:s.comp,d1:s.dA,m1:s.mA,d2:dB,m2:mB,anio:s.anio,f1:f1,f2:f2,miNom:miNom,compNom:compNom,estado:'pendiente',ts:Date.now()});
+    LS.set('solPendLC',{solKey:r.key,compNom:compNom});vigilarPend();
+  }catch(e){alert('No se pudo enviar: '+(e.code||e.message||e))}
   render();
 }
 function render(){
@@ -298,7 +370,7 @@ document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()
 
 // --- Calendario propio ---
 function vCal(){
-  const {g,t}=misDatos();let h=selectorAnio()+LEYENDA+avisoSinDatos(g,t);
+  const {g,t}=misDatos();let h=bannerSel()+selectorAnio()+LEYENDA+avisoSinDatos(g,t);
   for(let m=0;m<12;m++)h+=mesHTML(anio,m,g,t,cambios,{click:1});
   const primera=!$('main').dataset.sc;
   $('main').innerHTML=h;
@@ -317,6 +389,8 @@ function abrirDia(y,m,d){
   if(c)h+='<span class="pill">'+esc(c.texto||c.clase)+'</span>';
   h+='</div>';
   h+='<button class="btn" data-cam="b-vac">🌴 Vacaciones</button><button class="btn" data-cam="b-cambio-libre">🎁 Libre sin compensación</button><button class="btn" data-cam="b-inter">🟡 Trabajado (en día libre)</button>';
+  h+='<button class="btn" data-cam="propio">🔄 Cambio propio</button>';
+  if(S.modoGrupo&&miembros.length>1)h+='<button class="btn" data-cam="comp">🤝 Cambio con compañero</button>';
   if(c)h+='<button class="btn red" data-cam="quitar">🗑️ Quitar marca</button>';
   if(S.modoGrupo&&miembros.length){
     const q=quienesEseDia(y,m,d);
@@ -325,12 +399,13 @@ function abrirDia(y,m,d){
   }
   h+='<button class="btn" style="margin-top:16px" onclick="cerrarModal()">Cerrar</button>';
   modal(h);
-  $('modalc').onclick=ev=>{const b=ev.target.closest('[data-cam]');if(!b)return;marcarDia(y,m,d,b.dataset.cam)};
+  $('modalc').onclick=ev=>{const b=ev.target.closest('[data-cam]');if(!b)return;accionDia(y,m,d,b.dataset.cam)};
 }
 async function marcarDia(y,m,d,clase){
   const key=claveActual(cambios,y,m,d),prev=cambios[key];
   try{
     if(clase==='quitar'){
+      if(prev&&prev.linkedUid){alert('Este día es un cambio con un compañero. Para deshacerlo, hazlo desde la app de Android.');return}
       if(prev&&prev.histKey){alert('Esta marca está enlazada con el Historial (cambio, pendiente, L-26…). Para quitarla, hazlo desde la app de Android.');return}
       await db.ref('cambios/'+S.miID+'/'+key).remove();
     }else{
@@ -402,9 +477,10 @@ async function guardarPerfil(){
 }
 document.addEventListener('click',e=>{
   if(!S)return;
+  if(e.target.closest('[data-cancelsel]')){SEL=null;render();return}
   const a=e.target.closest('[data-anio]');
   if(a){const n=anio+(+a.dataset.anio);if(n>=Math.min(...ANIOS)&&n<=Math.max(...ANIOS)){anio=n;if(!$('modal').classList.contains('hide'))verCompanero(window._vc);else render()}return}
-  const c=e.target.closest('.c[data-d]');if(c&&tab==='cal'){abrirDia(anio,+c.dataset.m,+c.dataset.d);return}
+  const c=e.target.closest('.c[data-d]');if(c&&tab==='cal'){if(SEL)confirmarSel(+c.dataset.d,+c.dataset.m);else abrirDia(anio,+c.dataset.m,+c.dataset.d);return}
   const p=e.target.closest('.fila[data-p]');if(p){verCompanero(p.dataset.p);return}
   const gs=e.target.closest('[data-gs]');if(gs){grVer.s=gs.dataset.gs;grVer.g=SISTEMAS.find(x=>x.id===grVer.s).grupos[0];if(!subgruposDe(grVer.g).includes(grVer.t))grVer.t=subgruposDe(grVer.g)[0];render();return}
   const gg=e.target.closest('[data-gg]');if(gg){grVer.g=gg.dataset.gg;if(!subgruposDe(grVer.g).includes(grVer.t))grVer.t=subgruposDe(grVer.g)[0];render();return}
