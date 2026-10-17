@@ -198,6 +198,20 @@ export default function CalendarioScreen({ navigation, route }) {
     useFocusEffect(
         useCallback(() => {
             async function checkModoGenerado() {
+                // Si el perfil (grupo, subgrupo, nombre...) se ha cambiado en Ajustes o en Grupos, recargar la sesión
+                try {
+                    const sRaw = await AsyncStorage.getItem('sesion2026');
+                    if (sRaw) {
+                        const nueva = JSON.parse(sRaw);
+                        setSesion(prev => (
+                            prev &&
+                            prev.miGrupoSesion === nueva.miGrupoSesion &&
+                            prev.miTipoSesion === nueva.miTipoSesion &&
+                            prev.miNombreCompleto === nueva.miNombreCompleto &&
+                            JSON.stringify(prev.miPerfil) === JSON.stringify(nueva.miPerfil)
+                        ) ? prev : { ...prev, ...nueva });
+                    }
+                } catch (e) { /* si falla, se mantiene la sesión actual */ }
                 const mgRaw = await AsyncStorage.getItem('modoGenerado');
                 if (mgRaw) {
                     setModoGenerado(JSON.parse(mgRaw));

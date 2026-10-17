@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
     ActivityIndicator, Image, Alert
@@ -67,6 +68,25 @@ export default function CompanerosScreen({ navigation }) {
             if (unsubMiembros) unsubMiembros();
         };
     }, []);
+
+    // Si el perfil se cambia en Ajustes o en Grupos, recargar la sesión al volver a esta pantalla
+    useFocusEffect(
+        useCallback(() => {
+            (async () => {
+                try {
+                    const sRaw = await AsyncStorage.getItem('sesion2026');
+                    if (!sRaw) return;
+                    const nueva = JSON.parse(sRaw);
+                    setSesion(prev => (
+                        prev &&
+                        prev.miGrupoSesion === nueva.miGrupoSesion &&
+                        prev.miTipoSesion === nueva.miTipoSesion &&
+                        JSON.stringify(prev.miPerfil) === JSON.stringify(nueva.miPerfil)
+                    ) ? prev : { ...prev, ...nueva });
+                } catch (e) { /* se mantiene la sesión actual */ }
+            })();
+        }, [])
+    );
 
     async function elegirFoto(id) {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
