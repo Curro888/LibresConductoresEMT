@@ -257,7 +257,7 @@ export function getLibresConductor(year, grupo, subgrupo) {
 
 export const ANIOS_CONDUCTORES = Object.keys(POR_ANIO).map(Number);
 
-// Fiestas 2027 según el PDF de conductores.
+// Fiestas 2027: calendario oficial de la Comunidad de Madrid + fiestas locales de Madrid (San Isidro y La Almudena).
 export const FESTIVOS_CONDUCTORES = {
     2026: [
         { fecha: '1/1', nombre: 'Año Nuevo' },
@@ -278,15 +278,15 @@ export const FESTIVOS_CONDUCTORES = {
     2027: [
         { fecha: '1/1',   nombre: 'Año Nuevo' },
         { fecha: '6/1',   nombre: 'Epifanía del Señor' },
+        { fecha: '19/3',  nombre: 'San José' },
         { fecha: '25/3',  nombre: 'Jueves Santo' },
         { fecha: '26/3',  nombre: 'Viernes Santo' },
         { fecha: '1/5',   nombre: 'Fiesta del Trabajo' },
-        { fecha: '3/5',   nombre: 'Fiesta de la Comunidad de Madrid' },
-        { fecha: '15/5',  nombre: 'San Isidro' },
+        { fecha: '15/5',  nombre: 'San Isidro Labrador' },
         { fecha: '16/8',  nombre: 'Traslado de la Asunción de la Virgen' },
         { fecha: '12/10', nombre: 'Fiesta Nacional de España' },
         { fecha: '1/11',  nombre: 'Todos los Santos' },
-        { fecha: '9/11',  nombre: 'Virgen de la Almudena' },
+        { fecha: '9/11',  nombre: 'Nuestra Señora de la Almudena' },
         { fecha: '6/12',  nombre: 'Día de la Constitución' },
         { fecha: '8/12',  nombre: 'Inmaculada Concepción' },
         { fecha: '25/12', nombre: 'Natividad del Señor' }
