@@ -700,7 +700,7 @@ function vComp(){
   if(!S.modoGrupo){h+='<div class="card small">Estás en modo individual. Para ver a tus compañeros, cierra sesión y entra o crea un grupo.</div>';$('main').innerHTML=h;return}
   if(esCT()){
     const nuevo=!$('ctq')||$('main').dataset.t!=='comp';
-    if(nuevo){$('main').innerHTML=h+'<input type="tel" id="ctq" placeholder="🔎 Buscar por número de empleado" style="width:100%;padding:12px;font-size:16px;margin:4px 0 10px;border:1px solid #cbd5e1;border-radius:12px;box-sizing:border-box" value="'+esc(CTQ)+'"><div id="ctlista"></div>';
+    if(nuevo){$('main').innerHTML=h+'<input type="tel" id="ctq" placeholder="🔎 Buscar por número de empleado" style="display:block;width:100%;padding:12px;font-size:16px;margin:4px auto 10px;border:2px solid var(--bord);background:var(--inp);color:var(--text);border-radius:14px;box-sizing:border-box" value="'+esc(CTQ)+'"><div id="ctlista"></div>';
       $('ctq').addEventListener('input',()=>{CTQ=$('ctq').value.replace(/\D/g,'');pintaCT()})}
     pintaCT();return;
   }
