@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Libres Conductores">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#2563eb">
+<title>Libres Conductores EMT</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="datos.js"></script>
+<style>
+/* Estilo igual que MadridEnRuta: limpio, blanco/negro, tarjetas de colores, azul como color principal */
+:root{--bg:#fff;--card:#F0F0F3;--text:#0f172a;--text2:#60646C;--bord:#E0E1E6;--pri:#2563eb;--pric:#dbeafe;
+--libre:#fee2e2;--libret:#991b1b;--trab:#e8eaee;--trabt:#334155;--sub:#bfdbfe;--subt:#1e3a8a;--lrj:#a7f3d0;--lrjt:#065f46;--inp:#fff}
+body.dark{--bg:#000;--card:#212225;--text:#fff;--text2:#B0B4BA;--bord:#2E3135;--pri:#60a5fa;--pric:#1e3a5f;
+--libre:#4a2828;--libret:#fca5a5;--trab:#2E3135;--trabt:#B0B4BA;--sub:#1e3a8a;--subt:#bfdbfe;--lrj:#14532d;--lrjt:#a7f3d0;--inp:#212225}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{display:flex;flex-direction:column;overflow:hidden}
+.hide{display:none!important}
+header{padding:calc(env(safe-area-inset-top) + 12px) 20px 6px;flex:none}
+header>div{max-width:560px;margin:0 auto}
+header h1{margin:0;font-size:28px;font-weight:800;color:var(--text)}
+header p{margin:2px 0 0;font-size:14px;color:var(--text2)}
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 16px 24px}
+main>*{max-width:560px;margin-left:auto;margin-right:auto}
+nav{display:flex;background:var(--card);border-top:1px solid var(--bord);padding-bottom:env(safe-area-inset-bottom);flex:none}
+nav button{flex:1;border:0;background:none;padding:9px 0 7px;font-size:11px;font-weight:700;color:var(--text2)}
+nav button span{display:block;font-size:20px}
+nav button.on{color:var(--pri)}
+.sec{font-size:12px;font-weight:800;letter-spacing:1px;color:var(--text2);margin:16px 4px 8px;text-transform:uppercase}
+.tile{display:flex;flex-direction:column;justify-content:space-between;width:100%;min-height:94px;border:0;border-radius:18px;padding:12px;margin-bottom:10px;color:#fff;text-align:left;box-shadow:0 3px 6px rgba(0,0,0,.2);font-family:inherit}
+.tile:active{opacity:.85;transform:scale(.98)}
+.tile .circ{width:34px;height:34px;border-radius:17px;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:8px}
+.tile b{font-size:17px;display:block}.tile small{font-size:12px;opacity:.85}
+.card{background:var(--card);border-radius:18px;padding:14px;margin-bottom:10px}
+.btn{display:block;width:100%;border:2px solid var(--pri);background:transparent;color:var(--pri);border-radius:14px;padding:13px;font-size:15px;font-weight:800;margin-top:8px;font-family:inherit}
+.btn.fill{background:var(--pri);color:#fff}
+.btn.red{border-color:#dc2626;color:#dc2626}
+.btn small{display:block;font-weight:500;font-size:12px;opacity:.8}
+label{display:block;font-size:13px;font-weight:700;color:var(--text2);margin:12px 0 6px}
+input[type=text],input[type=password],input[type=tel]{width:100%;border:2px solid var(--bord);border-radius:14px;padding:12px;font-size:16px;background:var(--inp);color:var(--text);font-family:inherit}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{min-width:40px;height:40px;padding:0 12px;border-radius:12px;border:1px solid var(--bord);background:var(--card);color:var(--text2);font-weight:700;font-size:13px;font-family:inherit}
+.chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.mes{background:var(--card);border-radius:18px;padding:10px;margin-bottom:10px}
+.mes h3{margin:0 0 6px;text-align:center;font-size:15px;color:var(--text)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.dl{text-align:center;font-size:11px;font-weight:800;color:var(--text2)}
+.c{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:13px;font-weight:600;position:relative;border:2px solid transparent}
+.c.libre{background:var(--libre);color:var(--libret)}.c.trab{background:var(--trab);color:var(--trabt)}
+.c.sub{background:var(--sub);color:var(--subt)}.c.lrj{background:var(--lrj);color:var(--lrjt)}
+.c.fest{background:#ef4444;color:#000}.c.fest.libre,.c.fest.sub,.c.fest.lrj{color:#fff}
+.c.vac{background:#dcfce7;color:#166534;border-color:#16a34a}.c.inter{background:#fef08a;color:#713f12;border-color:#eab308}
+.c.cl{background:#fee2e2;color:#991b1b;border-color:#ef4444}.c.pend{background:#f3e8ff;color:#6b21a8;border-color:#9333ea}
+.c.gen{background:#fdf2f8;color:#be185d;border-color:#f472b6}.c.l26{background:#fefce8;color:#b45309;border-color:#f59e0b}
+.c.hoy{font-weight:900;outline:2px solid var(--pri)}
+.anio{display:flex;align-items:center;justify-content:center;gap:16px;margin:6px auto 10px}
+.anio button{width:40px;height:40px;border-radius:20px;border:0;background:var(--pric);color:var(--pri);font-size:18px;font-weight:900}
+.anio b{font-size:18px}
+.fila{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:18px;padding:12px;margin-bottom:8px}
+.fila.yo{outline:2px solid var(--pri)}
+.ico{width:40px;height:40px;border-radius:20px;background:var(--pric);display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
+.ico.libre{background:var(--libre)}
+.fila .t{flex:1;min-width:0}.fila .t b{font-size:14px}.fila .t div{font-size:12px;color:var(--text2);margin-top:2px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.modal>div{background:var(--bg);width:100%;max-width:560px;max-height:88%;overflow-y:auto;border-radius:22px 22px 0 0;padding:16px 16px calc(env(safe-area-inset-bottom) + 16px)}
+.modal h2{margin:0 0 4px;font-size:20px}
+.pill{display:inline-block;padding:4px 10px;border-radius:10px;font-size:12px;font-weight:700;background:var(--pric);color:var(--pri);margin:2px 4px 2px 0}
+.small{font-size:12px;color:var(--text2)}
+.leyenda{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--text2);margin-bottom:10px;justify-content:center}
+.leyenda i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+#spin{text-align:center;padding:40px;color:var(--text2)}
+</style>
+</head>
+<body>
+<header><div><h1>Libres Conductores</h1><p id="hsub">EMT</p></div></header>
+<main id="main"><div id="spin">Cargando…</div></main>
+<nav id="nav" class="hide">
+<button data-t="cal" class="on"><span>📅</span>Calendario</button>
+<button data-t="comp"><span>👥</span>Compañeros</button>
+<button data-t="gru"><span>🗓️</span>Grupos</button>
+<button data-t="aj"><span>⚙️</span>Ajustes</button>
+</nav>
+<div id="modal" class="modal hide"><div id="modalc"></div></div>
+
+<script>
+// ===== FIREBASE (proyecto libresconductoresemt) =====
+firebase.initializeApp({
+  apiKey:"AIzaSyCy-Bple2Z3pEFz5jRd1m_f6l0mXIHzWbM",
+  authDomain:"libresconductoresemt.firebaseapp.com",
+  databaseURL:"https://libresconductoresemt-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:"libresconductoresemt",
+  storageBucket:"libresconductoresemt.firebasestorage.app",
+  messagingSenderId:"97914022948",
+  appId:"1:97914022948:web:9e222cb5b39bdc17a53cb1"
+});
+const db=firebase.database();
+const authP=firebase.auth().signInAnonymously().catch(e=>{console.error(e)});
+
+// ===== UTILIDADES =====
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DSEM=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const SUBS=['A','B','C','D','E','F','G','H','I','J'];
+const SUB_RSN=['1','2','3','4','5','6','7','8','9','A','B','C','D','E','F','G','H','I','J','K'];
+const SISTEMAS=[{id:'C',nombre:'Línea convencional',grupos:['1','2','3','4','5']},{id:'B',nombre:'Búhos',grupos:['B1','B2','B3','B4','B5']},{id:'R',nombre:'R.S.N',grupos:['RA','RB']}];
+const ANIOS=Object.keys(POR_ANIO).map(Number).sort();
+const VACIO={libres:Array(12).fill([]),subgrupo:Array(12).fill([]),lrj:Array(12).fill([])};
+
+function sistemaDe(g){g=String(g||'');return g[0]==='R'?'R':g[0]==='B'?'B':'C'}
+function subgruposDe(g){return sistemaDe(g)==='R'?SUB_RSN:SUBS}
+function nombreGrupo(g){g=String(g||'');const s=sistemaDe(g);return s==='B'?'Búhos '+g.slice(1):s==='R'?'R.S.N '+g.slice(1):'Grupo '+g}
+function nombreGrupoSub(g,t){g=String(g||'');return sistemaDe(g)==='R'?'R.S.N '+g.slice(1)+(t||''):nombreGrupo(g)+(t?' · '+t:'')}
+function etiquetaGrupo(g,t){g=String(g||'');const s=sistemaDe(g);return s==='B'?'Bú'+g.slice(1)+'·'+t:s==='R'?'RSN '+g.slice(1)+t:'G'+g+'·'+t}
+function textoPerfil(m){if(!m)return'';const p=[etiquetaGrupo(m.g,m.t)];if(m.c)p.push('Correturnos');else{if(m.l)p.push('Línea '+m.l);if(m.tu)p.push('Turno '+m.tu)}if(m.e)p.push('Esc. '+m.e);return p.join(' · ')}
+function getLibres(y,g,t){const po=POR_ANIO[y];if(!po)return VACIO;const s=sistemaDe(g);const tb=po[s];if(!tb)return VACIO;t=String(t||'').toUpperCase();return tb[(s==='C'?String(g):String(g).slice(1))+t]||VACIO}
+function anioInicial(){const h=new Date().getFullYear();if(ANIOS.includes(h))return h;const f=ANIOS.filter(a=>a>h);return f.length?Math.min(...f):Math.max(...ANIOS)}
+function esFestivo(y,m,d){const f=FESTIVOS[y]||[];const k=d+'/'+(m+1);return f.find(x=>x.fecha===k)||null}
+function claveDia(y,m,d){return y+'_'+m+'_'+d}
+function leerDia(o,y,m,d){if(!o)return undefined;const v=o[claveDia(y,m,d)];if(v!==undefined)return v;if(y===2026)return o[m+'_'+d];return undefined}
+function claveActual(o,y,m,d){const n=claveDia(y,m,d);if(o&&o[n]!==undefined)return n;if(y===2026&&o&&o[m+'_'+d]!==undefined)return m+'_'+d;return n}
+function libreBase(y,g,t,m,d){const L=getLibres(y,g,t);return (L.libres[m]||[]).includes(d)||(L.subgrupo[m]||[]).includes(d)||(L.lrj[m]||[]).includes(d)}
+function esLibreFinal(y,g,t,m,d,cambios){let l=libreBase(y,g,t,m,d);const c=leerDia(cambios,y,m,d);if(c){if(c.clase==='b-cambio-libre'||c.clase==='b-vac')l=true;else if(['b-inter','b-pend','b-generado','b-l26'].includes(c.clase))l=false}return l}
+
+// ===== ESTADO =====
+let S=null;
+let tab='cal', anio=anioInicial();
+let cambios={}, cambiosTodos={}, miembros=[], offs=[];
+let grVer={s:null,g:null,t:null};
+let hbTimer=null;
+
+function guardarSesion(){LS.set('sesionLC',S)}
+function modal(html){$('modalc').innerHTML=html;$('modal').classList.remove('hide')}
+function cerrarModal(){$('modal').classList.add('hide');$('modalc').innerHTML=''}
+$('modal').addEventListener('click',e=>{if(e.target.id==='modal')cerrarModal()});
+function misDatos(){return {g:S.miGrupoSesion,t:S.miTipoSesion}}
+
+// ===== MES (HTML) =====
+function mesHTML(y,m,g,t,cam,opt){
+  opt=opt||{};const L=getLibres(y,g,t);const hoy=new Date();
+  const start=(new Date(y,m,1).getDay()+6)%7, n=new Date(y,m+1,0).getDate();
+  let h='<div class="mes"><h3>'+MESES[m]+'</h3><div class="grid">'+['L','M','X','J','V','S','D'].map(x=>'<div class="dl">'+x+'</div>').join('');
+  for(let i=0;i<start;i++)h+='<div></div>';
+  for(let d=1;d<=n;d++){
+    const sub=(L.subgrupo[m]||[]).includes(d), lrj=(L.lrj[m]||[]).includes(d), lib=(L.libres[m]||[]).includes(d)||sub||lrj;
+    const c=leerDia(cam,y,m,d); let real=lib;
+    if(c){if(c.clase==='b-cambio-libre'||c.clase==='b-vac')real=true;else if(['b-inter','b-pend','b-generado','b-l26'].includes(c.clase))real=false}
+    let cl='c '+(real?'libre':'trab');
+    if(lib&&real){if(lrj)cl='c lrj';else if(sub)cl='c sub'}
+    if(esFestivo(y,m,d))cl+=' fest'+(real?' libre':'');
+    if(c){cl+=' '+({'b-vac':'vac','b-inter':'inter','b-cambio-libre':'cl','b-pend':'pend','b-generado':'gen','b-l26':'l26'}[c.clase]||'')}
+    if(hoy.getFullYear()===y&&hoy.getMonth()===m&&hoy.getDate()===d)cl+=' hoy';
+    h+='<div class="'+cl+'"'+(opt.click?' data-d="'+d+'" data-m="'+m+'"':'')+'>'+d+'</div>';
+  }
+  return h+'</div></div>';
+}
+const LEYENDA='<div class="leyenda"><span><i style="background:var(--libre)"></i>Libre</span><span><i style="background:var(--sub)"></i>Libre subgrupo</span><span><i style="background:var(--lrj)"></i>Red. jornada</span><span><i style="background:#ef4444"></i>Festivo</span><span><i style="background:#dcfce7;border:1px solid #16a34a"></i>Vacaciones</span><span><i style="background:#fef08a;border:1px solid #eab308"></i>Trabajado</span></div>';
+function selectorAnio(){return '<div class="anio"><button data-anio="-1">‹</button><b>'+anio+'</b><button data-anio="1">›</button></div>'}
+function avisoSinDatos(g,t){return getLibres(anio,g,t)===VACIO?'<div class="card small">Todavía no hay libres de '+anio+' para este grupo. Se añadirán cuando se publiquen.</div>':''}
+
+// ===== LOGIN =====
+let LF={modo:null,P:null,sis:'C'};
+function pantallaLogin(){
+  $('nav').classList.add('hide');$('hsub').textContent='¿Cómo quieres entrar?';
+  const gs=LS.get('gruposGuardadosLC')||[];
+  let h='';
+  if(!LF.modo){
+    if(gs.length){h+='<div class="sec">Acceso rápido</div>'+gs.map((g,i)=>'<div style="display:flex;gap:6px;align-items:center"><button class="tile" style="background:#0f766e;min-height:70px" data-ent="'+i+'"><b>👥 '+esc(g.nombre||g.codigo)+'</b><small>'+esc(g.codigo)+' · '+esc(g.perfil?textoPerfil(g.perfil):'')+'</small></button><button style="border:0;background:none;font-size:20px;margin-bottom:10px" data-del="'+i+'">🗑️</button></div>').join('')}
+    h+='<div class="sec">Empezar</div>';
+    h+='<button class="tile" style="background:#2563eb" data-modo="ind"><div class="circ">👤</div><div><b>Individual</b><small>Solo para mí</small></div></button>';
+    h+='<button class="tile" style="background:#16a34a" data-modo="unir"><div class="circ">👥</div><div><b>Unirme a un grupo</b><small>Con el código y la contraseña</small></div></button>';
+    h+='<button class="tile" style="background:#be185d" data-modo="crear"><div class="circ">➕</div><div><b>Crear un grupo nuevo</b><small>Para tus compañeros</small></div></button>';
+    h+='<div class="card small" style="margin-top:14px">📲 En el iPhone: pulsa el botón Compartir de Safari y elige <b>«Añadir a pantalla de inicio»</b> para usarla como una app.</div>';
+  }else{
+    const t={ind:'Individual',unir:'Unirme a un grupo',crear:'Crear un grupo'}[LF.modo];
+    h+='<div class="card"><button class="btn" style="margin:0 0 6px" data-modo="">‹ Volver</button><h2 style="margin:8px 0">'+t+'</h2>';
+    if(LF.modo==='unir')h+='<label>Código del grupo</label><input type="text" id="lf-cod" autocapitalize="off"><label>Contraseña del grupo</label><input type="password" id="lf-pass">';
+    if(LF.modo==='crear')h+='<label>Nombre del grupo</label><input type="text" id="lf-gn"><label>Contraseña</label><input type="password" id="lf-pass"><label>Repite la contraseña</label><input type="password" id="lf-pass2">';
+    h+='<label>Tu nombre</label><input type="text" id="lf-nom"><label>Tu número de empleado</label><input type="tel" id="lf-id">';
+    h+='<div id="pf"></div><button class="btn fill" data-ok="1">'+(LF.modo==='ind'?'Entrar':LF.modo==='unir'?'Unirme':'Crear grupo')+'</button></div>';
+  }
+  $('main').innerHTML=h;
+  if(LF.modo)pintaForm($('pf'),LF);
+}
+function pintaForm(cont,F){
+  const P=F.P,sis=P.g?sistemaDe(P.g):F.sis,sd=SISTEMAS.find(x=>x.id===sis),rsn=sis==='R';
+  const tg=g=>sis==='C'?g:g.slice(1);
+  let h='<label>Tu sistema de libres</label><div class="chips">'+SISTEMAS.map(x=>'<button class="chip'+(sis===x.id?' on':'')+'" data-fs="'+x.id+'">'+x.nombre+'</button>').join('')+'</div>';
+  h+='<label>'+(rsn?'Tu grupo R.S.N (primera letra de tu código)':'Tu grupo de libres')+'</label><div class="chips">'+sd.grupos.map(g=>'<button class="chip'+(P.g===g?' on':'')+'" data-fg="'+g+'">'+tg(g)+'</button>').join('')+'</div>';
+  h+='<label>'+(rsn?'Resto de tu código (ej. en A1 es el 1; en AB es la B)':'Tu subgrupo')+'</label><div class="chips">'+subgruposDe(P.g||sd.grupos[0]).map(x=>'<button class="chip'+(P.t===x?' on':'')+'" data-ft="'+x+'">'+x+'</button>').join('')+'</div>';
+  h+='<label>¿Tienes línea asignada?</label><div class="chips"><button class="chip'+(!P.c?' on':'')+'" data-fc="0">Sí, línea fija</button><button class="chip'+(P.c?' on':'')+'" data-fc="1">Correturnos</button></div>';
+  if(!P.c)h+='<label>Línea (opcional)</label><input type="text" id="pf-l" placeholder="Ej: 402 (la E2) o N5 (búho)" autocapitalize="characters" value="'+esc(P.l||'')+'"><label>Turno (opcional)</label><input type="tel" id="pf-tu" placeholder="Ej: 5" value="'+esc(P.tu||'')+'">';
+  h+='<label>'+(P.c?'Escalafón en la empresa':'Escalafón en la línea')+' (opcional)</label><input type="tel" id="pf-e" placeholder="Ej: 25 (puedes cambiarlo cuando quieras)" value="'+esc(P.e||'')+'">';
+  cont.innerHTML=h;
+  const bind=(id,k,f)=>{const el=cont.querySelector('#'+id);if(el)el.addEventListener('input',()=>{el.value=f(el.value);P[k]=el.value})};
+  bind('pf-l','l',v=>v.toUpperCase().replace(/[^0-9A-Z]/g,''));bind('pf-tu','tu',v=>v.replace(/\D/g,''));bind('pf-e','e',v=>v.replace(/\D/g,''));
+  cont.onclick=e=>{
+    const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.fs){if(b.dataset.fs!==sis){F.sis=b.dataset.fs;P.g='';P.t=''}}
+    else if(b.dataset.fg){P.g=b.dataset.fg;if(!subgruposDe(P.g).includes(P.t))P.t=''}
+    else if(b.dataset.ft)P.t=b.dataset.ft;
+    else if(b.dataset.fc){P.c=b.dataset.fc==='1';if(P.c){P.l='';P.tu=''}}
+    else return;
+    pintaForm(cont,F);
+  };
+}
+function perfilAMiembro(P){const m={g:String(P.g),t:String(P.t),c:!!P.c};if(!P.c){if(String(P.l||'').trim())m.l=String(P.l).trim();if(String(P.tu||'').trim())m.tu=String(P.tu).trim()}if(String(P.e||'').trim())m.e=String(P.e).trim();return m}
+function validaPerfil(P){return(!P.g||!P.t)?'Elige tu grupo y tu subgrupo':null}
+function guardarGrupoEnLista(x){const l=LS.get('gruposGuardadosLC')||[];const i=l.findIndex(a=>a.codigo===x.codigo&&a.id===x.id);if(i>=0)l[i]=x;else l.push(x);LS.set('gruposGuardadosLC',l)}
+
+async function enviarLogin(){
+  const v=id=>($(id)?$(id).value.trim():'');
+  const nom=v('lf-nom'),id=v('lf-id');
+  if(!nom||!id)return alert('Escribe tu nombre y tu número de empleado');
+  const err=validaPerfil(LF.P);if(err)return alert(err);
+  const m=perfilAMiembro(LF.P);
+  await authP;
+  try{
+    if(LF.modo==='ind'){S={miID:id,miNombreCompleto:nom,modoGrupo:false,grupoActual:null,miGrupoSesion:m.g,miTipoSesion:m.t,miPerfil:m}}
+    else if(LF.modo==='unir'){
+      const cod=v('lf-cod'),pass=v('lf-pass');if(!cod||!pass)return alert('Rellena todos los campos');
+      const g=(await db.ref('grupos/'+cod).once('value')).val();
+      if(!g)return alert('Grupo no encontrado. Revisa que el código esté bien escrito.');
+      if(g.pass!==pass)return alert('Contraseña incorrecta');
+      await db.ref('grupos/'+cod+'/miembros/'+id).set(Object.assign({n:nom,id:id},m));
+      S={miID:id,miNombreCompleto:nom,modoGrupo:true,grupoActual:cod,miGrupoSesion:m.g,miTipoSesion:m.t,miPerfil:m};
+      guardarGrupoEnLista({codigo:cod,id:id,nombre:g.nombre||cod,perfil:m});
+    }else{
+      const gn=v('lf-gn'),pass=v('lf-pass'),p2=v('lf-pass2');
+      if(!gn||!pass)return alert('Rellena todos los campos');if(pass!==p2)return alert('Las contraseñas no coinciden');
+      const base=gn.toLowerCase().replace(/[^a-z0-9áéíóúüñ]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+      const cod=base+'_'+Date.now().toString(36);
+      await db.ref('grupos/'+cod).set({nombre:gn,pass:pass,creador:id,miembros:{[id]:Object.assign({n:nom,id:id},m)}});
+      alert('✅ Grupo creado\n\nCódigo del grupo: '+cod+'\n\nGuárdalo para compartirlo con tus compañeros.');
+      S={miID:id,miNombreCompleto:nom,modoGrupo:true,grupoActual:cod,miGrupoSesion:m.g,miTipoSesion:m.t,miPerfil:m};
+      guardarGrupoEnLista({codigo:cod,id:id,nombre:gn,perfil:m});
+    }
+  }catch(e){return alert('No se pudo completar: '+(e.code||e.message||e))}
+  guardarSesion();LF={modo:null,P:null,sis:'C'};iniciarApp();
+}
+async function entrarGuardado(i){
+  const x=(LS.get('gruposGuardadosLC')||[])[i];if(!x)return;
+  await authP;
+  try{
+    const mm=(await db.ref('grupos/'+x.codigo+'/miembros/'+x.id).once('value')).val();
+    if(!mm)return alert('Ya no estás en ese grupo (o el grupo no existe).');
+    const m={g:mm.g,t:mm.t,c:!!mm.c};if(mm.l)m.l=mm.l;if(mm.tu)m.tu=mm.tu;if(mm.e)m.e=mm.e;
+    S={miID:x.id,miNombreCompleto:mm.n||x.nombre,modoGrupo:true,grupoActual:x.codigo,miGrupoSesion:m.g,miTipoSesion:m.t,miPerfil:m};
+    guardarSesion();iniciarApp();
+  }catch(e){alert('No se pudo entrar: '+(e.code||e.message||e))}
+}
+$('main').addEventListener('click',e=>{
+  if(S)return;
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.modo!==undefined){LF.modo=b.dataset.modo||null;LF.P={g:'',t:'',c:false,l:'',tu:'',e:''};LF.sis='C';pantallaLogin()}
+  else if(b.dataset.ok)enviarLogin();
+  else if(b.dataset.ent!==undefined)entrarGuardado(+b.dataset.ent);
+  else if(b.dataset.del!==undefined){if(confirm('¿Quitar este grupo de la lista?')){const l=LS.get('gruposGuardadosLC')||[];l.splice(+b.dataset.del,1);LS.set('gruposGuardadosLC',l);pantallaLogin()}}
+});
+
+// ===== APP =====
+function limpiar(){offs.forEach(f=>{try{f()}catch(e){}});offs=[];if(hbTimer){clearInterval(hbTimer);hbTimer=null}}
+async function iniciarApp(){
+  limpiar();await authP;
+  $('nav').classList.remove('hide');tab='cal';anio=anioInicial();cambios={};cambiosTodos={};miembros=[];grVer={s:null,g:null,t:null};
+  $('main').dataset.sc='';
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==='cal'));
+  const on=(ref,cb)=>{ref.on('value',cb);offs.push(()=>ref.off('value',cb))};
+  on(db.ref('cambios/'+S.miID),s=>{cambios=s.val()||{};if(tab==='cal'||tab==='aj')render()});
+  on(db.ref('cambios'),s=>{cambiosTodos=s.val()||{};if(tab==='comp')render()});
+  if(S.modoGrupo&&S.grupoActual){
+    on(db.ref('grupos/'+S.grupoActual+'/miembros'),s=>{const d=s.val()||{};miembros=(Array.isArray(d)?d.filter(Boolean):Object.values(d));
+      const yo=miembros.find(x=>x.id===S.miID);
+      if(yo&&(yo.g!==S.miGrupoSesion||yo.t!==S.miTipoSesion)){const m={g:yo.g,t:yo.t,c:!!yo.c};if(yo.l)m.l=yo.l;if(yo.tu)m.tu=yo.tu;if(yo.e)m.e=yo.e;S.miGrupoSesion=m.g;S.miTipoSesion=m.t;S.miPerfil=m;guardarSesion()}
+      if(tab==='comp'||tab==='cal')render()});
+    const hb=()=>db.ref('presencia/'+S.grupoActual+'/'+S.miID).set({ts:Date.now()}).catch(()=>{});hb();hbTimer=setInterval(hb,60000);
+  }
+  render();
+}
+function render(){
+  if(!S)return;
+  $('hsub').textContent=S.miNombreCompleto+' · '+nombreGrupoSub(S.miGrupoSesion,S.miTipoSesion);
+  const m=$('main'),y=m.scrollTop,mismo=m.dataset.t===tab;
+  if(tab==='cal')vCal();else if(tab==='comp')vComp();else if(tab==='gru')vGru();else vAj();
+  if(mismo&&m.dataset.sc)m.scrollTop=y;m.dataset.t=tab;
+}
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));$('main').scrollTop=0;$('main').dataset.t='';$('main').dataset.sc='';render()}));
+
+// --- Calendario propio ---
+function vCal(){
+  const {g,t}=misDatos();let h=selectorAnio()+LEYENDA+avisoSinDatos(g,t);
+  for(let m=0;m<12;m++)h+=mesHTML(anio,m,g,t,cambios,{click:1});
+  const primera=!$('main').dataset.sc;
+  $('main').innerHTML=h;
+  if(primera){$('main').dataset.sc='1';if(anio===new Date().getFullYear()){const mm=$('main').querySelectorAll('.mes')[new Date().getMonth()];if(mm)setTimeout(()=>{$('main').scrollTop=mm.offsetTop-10},30)}}
+}
+function quienesEseDia(y,m,d){
+  const libran=[],trab=[];
+  miembros.forEach(p=>{(esLibreFinal(y,p.g,p.t,m,d,p.id===S.miID?cambios:(cambiosTodos[p.id]||{}))?libran:trab).push(p)});
+  return {libran,trab};
+}
+function abrirDia(y,m,d){
+  const {g,t}=misDatos();const f=esFestivo(y,m,d),c=leerDia(cambios,y,m,d),libre=esLibreFinal(y,g,t,m,d,cambios);
+  let h='<h2>'+DSEM[new Date(y,m,d).getDay()]+' '+d+' de '+MESES[m]+' '+y+'</h2><div style="margin:6px 0">';
+  h+='<span class="pill">'+(libre?'🏠 Libras':'🚌 Trabajas')+'</span>';
+  if(f)h+='<span class="pill" style="background:#fee2e2;color:#991b1b">🎉 '+esc(f.nombre)+'</span>';
+  if(c)h+='<span class="pill">'+esc(c.texto||c.clase)+'</span>';
+  h+='</div>';
+  h+='<button class="btn" data-cam="b-vac">🌴 Vacaciones</button><button class="btn" data-cam="b-cambio-libre">🎁 Libre sin compensación</button><button class="btn" data-cam="b-inter">🟡 Trabajado (en día libre)</button>';
+  if(c)h+='<button class="btn red" data-cam="quitar">🗑️ Quitar marca</button>';
+  if(S.modoGrupo&&miembros.length){
+    const q=quienesEseDia(y,m,d);
+    const li=a=>a.length?a.map(p=>'<div class="small"><b style="color:var(--text)">'+esc(p.n)+'</b> · '+esc(textoPerfil(p))+'</div>').join(''):'<div class="small">Ninguno</div>';
+    h+='<div class="sec">🏠 Libran ('+q.libran.length+')</div>'+li(q.libran)+'<div class="sec">🚌 Trabajan ('+q.trab.length+')</div>'+li(q.trab);
+  }
+  h+='<button class="btn" style="margin-top:16px" onclick="cerrarModal()">Cerrar</button>';
+  modal(h);
+  $('modalc').onclick=ev=>{const b=ev.target.closest('[data-cam]');if(!b)return;marcarDia(y,m,d,b.dataset.cam)};
+}
+async function marcarDia(y,m,d,clase){
+  const key=claveActual(cambios,y,m,d),prev=cambios[key];
+  try{
+    if(clase==='quitar'){
+      if(prev&&prev.histKey){alert('Esta marca está enlazada con el Historial (cambio, pendiente, L-26…). Para quitarla, hazlo desde la app de Android.');return}
+      await db.ref('cambios/'+S.miID+'/'+key).remove();
+    }else{
+      if(prev&&prev.histKey&&!confirm('Este día está enlazado con el Historial de la app de Android. ¿Seguro que quieres sustituir la marca?'))return;
+      const txt={'b-vac':'Vacaciones','b-cambio-libre':'Libre sin compensación','b-inter':'Trabajado'}[clase];
+      await db.ref('cambios/'+S.miID+'/'+key).set({clase:clase,texto:txt});
+    }
+    cerrarModal();
+  }catch(e){alert('No se pudo guardar: '+(e.code||e.message||e))}
+}
+
+// --- Compañeros ---
+function vComp(){
+  const hoy=new Date(),y=hoy.getFullYear(),m=hoy.getMonth(),d=hoy.getDate();
+  let h='<div class="sec">Hoy es '+DSEM[hoy.getDay()]+', '+d+' de '+MESES[m]+'</div>';
+  if(!S.modoGrupo){h+='<div class="card small">Estás en modo individual. Para ver a tus compañeros, cierra sesión y entra o crea un grupo.</div>';$('main').innerHTML=h;return}
+  if(!miembros.length)h+='<div class="card small">Cargando miembros…</div>';
+  miembros.slice().sort((a,b)=>(a.id===S.miID?-1:b.id===S.miID?1:String(a.n).localeCompare(String(b.n)))).forEach(p=>{
+    const cam=p.id===S.miID?cambios:(cambiosTodos[p.id]||{}),libre=esLibreFinal(y,p.g,p.t,m,d,cam);
+    h+='<div class="fila'+(p.id===S.miID?' yo':'')+'" data-p="'+esc(p.id)+'"><div class="ico'+(libre?' libre':'')+'">'+(libre?'🏠':'🚌')+'</div><div class="t"><b>'+esc(p.n)+(p.id===S.miID?' (yo)':'')+'</b><div>'+esc(textoPerfil(p))+' · '+(libre?'Libra':'Trabaja')+'</div></div><div style="font-size:20px">📅</div></div>';
+  });
+  $('main').innerHTML=h;
+}
+function verCompanero(id){
+  const p=miembros.find(x=>x.id===id);if(!p)return;
+  const cam=id===S.miID?cambios:(cambiosTodos[id]||{});
+  let h='<h2>'+esc(p.n)+'</h2><div class="small">'+esc(textoPerfil(p))+'</div>'+selectorAnio()+LEYENDA+avisoSinDatos(p.g,p.t);
+  for(let m=0;m<12;m++)h+=mesHTML(anio,m,p.g,p.t,cam);
+  h+='<button class="btn" onclick="cerrarModal()">Cerrar</button>';
+  modal(h);window._vc=id;
+}
+
+// --- Grupos de libres ---
+function vGru(){
+  if(!grVer.s){grVer.s=sistemaDe(S.miGrupoSesion);grVer.g=S.miGrupoSesion;grVer.t=S.miTipoSesion}
+  const sd=SISTEMAS.find(x=>x.id===grVer.s);
+  let h='<div class="chips" style="margin-bottom:8px">'+SISTEMAS.map(x=>'<button class="chip'+(grVer.s===x.id?' on':'')+'" data-gs="'+x.id+'">'+x.nombre+'</button>').join('')+'</div>';
+  h+='<div class="chips" style="margin-bottom:8px">'+sd.grupos.map(g=>'<button class="chip'+(grVer.g===g?' on':'')+'" data-gg="'+g+'">'+(grVer.s==='C'?g:g.slice(1))+'</button>').join('')+'</div>';
+  h+='<div class="chips" style="margin-bottom:10px">'+subgruposDe(grVer.g).map(x=>'<button class="chip'+(grVer.t===x?' on':'')+'" data-gt="'+x+'">'+x+'</button>').join('')+'</div>';
+  h+='<div class="card" style="text-align:center"><b>'+esc(nombreGrupoSub(grVer.g,grVer.t))+'</b></div>'+selectorAnio()+LEYENDA+avisoSinDatos(grVer.g,grVer.t);
+  for(let m=0;m<12;m++)h+=mesHTML(anio,m,grVer.g,grVer.t,{});
+  $('main').innerHTML=h;
+}
+
+// --- Ajustes ---
+function vAj(){
+  let h='<div class="card"><b>'+esc(S.miNombreCompleto)+'</b><div class="small">Nº empleado '+esc(S.miID)+'</div><div style="margin-top:8px">'+esc(textoPerfil(S.miPerfil||{g:S.miGrupoSesion,t:S.miTipoSesion}))+'</div><button class="btn fill" data-aj="perfil">✏️ Editar mi perfil</button><div class="small" style="margin-top:6px">Si te cambian de grupo de libres, cámbialo aquí: el calendario se actualiza desde el 1 de enero.</div></div>';
+  if(S.modoGrupo)h+='<div class="card"><b>👥 Grupo</b><div class="small" style="word-break:break-all">Código: '+esc(S.grupoActual)+'</div></div>';
+  h+='<div class="card"><button class="btn" data-aj="dark" style="margin-top:0">'+(document.body.classList.contains('dark')?'☀️ Modo claro':'🌙 Modo oscuro')+'</button><button class="btn red" data-aj="salir">🚪 Cerrar sesión</button></div>';
+  h+='<div class="card small" style="text-align:center">Libres Conductores EMT · versión web para iPhone</div>';
+  $('main').innerHTML=h;
+}
+let EF=null;
+function editarPerfil(){
+  const p=S.miPerfil||{};EF={P:{g:p.g||S.miGrupoSesion,t:p.t||S.miTipoSesion,c:!!p.c,l:p.l||'',tu:p.tu||'',e:p.e||''},sis:'C'};
+  modal('<h2>Mi perfil</h2><div id="pf2"></div><button class="btn fill" id="pf-ok">Guardar</button><button class="btn" onclick="cerrarModal()">Cancelar</button>');
+  pintaForm($('pf2'),EF);
+  $('pf-ok').onclick=guardarPerfil;
+}
+async function guardarPerfil(){
+  const err=validaPerfil(EF.P);if(err)return alert(err);
+  const m=perfilAMiembro(EF.P);
+  try{
+    if(S.modoGrupo)await db.ref('grupos/'+S.grupoActual+'/miembros/'+S.miID).set(Object.assign({n:S.miNombreCompleto,id:S.miID},m));
+    S.miGrupoSesion=m.g;S.miTipoSesion=m.t;S.miPerfil=m;guardarSesion();
+    if(S.modoGrupo){const l=LS.get('gruposGuardadosLC')||[];const x=l.find(a=>a.codigo===S.grupoActual&&a.id===S.miID);guardarGrupoEnLista({codigo:S.grupoActual,id:S.miID,nombre:x?x.nombre:S.grupoActual,perfil:m})}
+    grVer={s:null,g:null,t:null};cerrarModal();render();
+  }catch(e){alert('No se pudo guardar: '+(e.code||e.message||e))}
+}
+document.addEventListener('click',e=>{
+  if(!S)return;
+  const a=e.target.closest('[data-anio]');
+  if(a){const n=anio+(+a.dataset.anio);if(n>=Math.min(...ANIOS)&&n<=Math.max(...ANIOS)){anio=n;if(!$('modal').classList.contains('hide'))verCompanero(window._vc);else render()}return}
+  const c=e.target.closest('.c[data-d]');if(c&&tab==='cal'){abrirDia(anio,+c.dataset.m,+c.dataset.d);return}
+  const p=e.target.closest('.fila[data-p]');if(p){verCompanero(p.dataset.p);return}
+  const gs=e.target.closest('[data-gs]');if(gs){grVer.s=gs.dataset.gs;grVer.g=SISTEMAS.find(x=>x.id===grVer.s).grupos[0];if(!subgruposDe(grVer.g).includes(grVer.t))grVer.t=subgruposDe(grVer.g)[0];render();return}
+  const gg=e.target.closest('[data-gg]');if(gg){grVer.g=gg.dataset.gg;if(!subgruposDe(grVer.g).includes(grVer.t))grVer.t=subgruposDe(grVer.g)[0];render();return}
+  const gt=e.target.closest('[data-gt]');if(gt){grVer.t=gt.dataset.gt;render();return}
+  const aj=e.target.closest('[data-aj]');if(aj){
+    if(aj.dataset.aj==='perfil')editarPerfil();
+    else if(aj.dataset.aj==='dark'){document.body.classList.toggle('dark');LS.set('darkLC',document.body.classList.contains('dark')?1:0);vAj()}
+    else if(aj.dataset.aj==='salir'&&confirm('¿Cerrar sesión en este iPhone?')){limpiar();LS.del('sesionLC');S=null;LF={modo:null,P:null,sis:'C'};pantallaLogin()}
+  }
+});
+
+// ===== ARRANQUE =====
+(function(){const p=LS.get('darkLC');const osc=p===null?(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches):!!p;if(osc)document.body.classList.add('dark')})();
+S=LS.get('sesionLC');
+if(S&&S.miID&&S.miGrupoSesion)iniciarApp();else{S=null;pantallaLogin()}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
