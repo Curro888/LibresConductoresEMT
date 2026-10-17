@@ -635,6 +635,11 @@ export default function HistorialScreen({ navigation, route }) {
                                 )}
                             </TouchableOpacity>
                         ))}
+                        <TouchableOpacity style={[s.portadaCard, { backgroundColor: '#f1f5f9', borderColor: '#94a3b8' }]} onPress={() => navigation.navigate('WebEMT')}>
+                            <Text style={s.portadaEmoji}>🌐</Text>
+                            <Text style={[s.portadaNombre, { color: '#334155' }]}>Web EMT</Text>
+                            <Text style={[s.portadaSub, { color: '#334155' }]}>Portal corporativo</Text>
+                        </TouchableOpacity>
                     </View>
                 </ScrollView>
             ) : (

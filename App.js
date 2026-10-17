@@ -15,6 +15,7 @@ import CalendarioCompaneroScreen from './screens/CalendarioCompaneroScreen';
 import GruposScreen from './screens/GruposScreen';
 import AdminScreen from './screens/AdminScreen';
 import EstadisticasScreen from './screens/EstadisticasScreen';
+import WebEMTScreen from './screens/WebEMTScreen';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { db, auth } from './config/firebase';
 import { ref, onValue } from 'firebase/database';
@@ -190,6 +191,7 @@ function AppContent() {
                 <Stack.Screen name="Grupos" component={GruposScreen} />
                 <Stack.Screen name="Admin" component={AdminScreen} />
                 <Stack.Screen name="Estadisticas" component={EstadisticasScreen} />
+                <Stack.Screen name="WebEMT" component={WebEMTScreen} />
             </Stack.Navigator>
         </NavigationContainer>
     );
