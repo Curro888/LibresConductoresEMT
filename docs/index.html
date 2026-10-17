@@ -400,7 +400,7 @@ function abrirDia(y,m,d){
   h+='<button class="btn" data-cam="b-vac">🌴 Vacaciones</button><button class="btn" data-cam="b-cambio-libre">🎁 Libre sin compensación</button><button class="btn" data-cam="b-inter">🟡 Trabajado (en día libre)</button>';
   h+='<button class="btn" data-cam="propio">🔄 Cambio propio</button><button class="btn" data-cam="nota">📝 '+(leerDia(notas,y,m,d)?'Editar nota':'Añadir nota')+'</button>';
   if(S.modoGrupo&&miembros.length>1)h+='<button class="btn" data-cam="comp">🤝 Cambio con compañero</button>';
-  if(c)h+='<button class="btn red" data-cam="quitar">🗑️ Quitar marca</button>';
+  if(c)h+='<button class="btn red" data-cam="quitar">🗑️ '+(c.linkedUid?'Borrar cambio':'Quitar marca')+'</button>';
   if(S.modoGrupo&&miembros.length){
     const q=quienesEseDia(y,m,d);
     const li=a=>a.length?a.map(p=>'<div class="small"><b style="color:var(--text)">'+esc(p.n)+'</b> · '+esc(textoPerfil(p))+'</div>').join(''):'<div class="small">Ninguno</div>';
@@ -410,11 +410,24 @@ function abrirDia(y,m,d){
   modal(h);
   $('modalc').onclick=ev=>{const b=ev.target.closest('[data-cam]');if(!b)return;accionDia(y,m,d,b.dataset.cam)};
 }
+async function borrarCambioComp(key,prev,hk){
+  const other=prev.linkedUid,lk=prev.linkedKey;
+  if(!confirm('¿Borrar este cambio con tu compañero? Se quitará de los dos calendarios.'))return;
+  try{
+    const up={},fd=k=>{const o=partesKey(k);return o.d+'/'+(o.m+1)};
+    [S.miID,other].forEach(u=>{up['cambios/'+u+'/'+key]=null;if(lk)up['cambios/'+u+'/'+lk]=null});
+    const fa=fd(key),fb=lk?fd(lk):null;
+    Object.entries(hist||{}).forEach(([k,x])=>{
+      if(x&&x.cat==='comp'&&x.otroUid===other&&(k===hk||(fb&&((x.diaTrabaja===fa&&x.diaLibra===fb)||(x.diaTrabaja===fb&&x.diaLibra===fa))))){
+        up['historial2/'+S.miID+'/'+k]=null;up['historial2/'+other+'/'+k]=null}});
+    await db.ref().update(up);cerrarModal();
+  }catch(e){alert('No se pudo borrar: '+(e.code||e.message||e))}
+}
 async function marcarDia(y,m,d,clase){
   const key=claveActual(cambios,y,m,d),prev=cambios[key];
   try{
     if(clase==='quitar'){
-      if(prev&&prev.linkedUid){alert('Este día es un cambio con un compañero. Para deshacerlo, hazlo desde la app de Android.');return}
+      if(prev&&prev.linkedUid){await borrarCambioComp(key,prev);return}
       if(prev&&prev.histKey&&prev.texto==='Libre sin compensación'){
         if(hist[prev.histKey]&&hist[prev.histKey].usado){alert('Este día ya se ha usado. Gestiónalo desde la app de Android.');return}
         await db.ref('historial2/'+S.miID+'/'+prev.histKey).remove();await db.ref('cambios/'+S.miID+'/'+key).remove();cerrarModal();return;
@@ -496,7 +509,12 @@ async function borrarHist(x){
   const i=x.indexOf('|'),tipo=x.slice(0,i),k=x.slice(i+1);
   if(!confirm('¿Borrar esto?'))return;
   try{
-    if(tipo==='vac'||tipo==='prop')await db.ref('cambios/'+S.miID+'/'+k).remove();
+    if(tipo==='comp'){
+      const x=hist[k];if(!x)return;const f=t=>{const a=(t||'').split('/');return a.length>1?claveDia(x.anio||2026,+a[1]-1,+a[0]):null};
+      const k1=f(x.diaTrabaja),k2=f(x.diaLibra),up={};
+      [S.miID,x.otroUid].forEach(u=>{if(!u)return;if(k1)up['cambios/'+u+'/'+k1]=null;if(k2)up['cambios/'+u+'/'+k2]=null;up['historial2/'+u+'/'+k]=null});
+      await db.ref().update(up);
+    }else if(tipo==='vac'||tipo==='prop')await db.ref('cambios/'+S.miID+'/'+k).remove();
     else if(tipo==='nota')await db.ref('notas/'+S.miID+'/'+k).remove();
   }catch(e){alert('No se pudo borrar: '+(e.code||e.message||e))}
 }
@@ -539,9 +557,8 @@ function vHist(){
     h+=L.vacaciones.length?L.vacaciones.map(([k,x])=>'<div class="fila" style="border-left:5px solid '+c.c+'"><div class="t"><b>'+fechaKey(k)+'</b><div>'+esc(x.texto||'Vacaciones')+'</div></div><button class="chip" data-hd="vac|'+esc(k)+'">🗑️</button></div>').join(''):vacio('No hay vacaciones marcadas');
   }else if(HV==='cambios'){
     h+=L.comp.length+L.propios.length?'':vacio('No hay cambios realizados');
-    h+=L.comp.map(([k,x])=>'<div class="fila" style="border-left:5px solid '+c.c+'"><div class="t"><b>🤝 '+esc(x.con||'Compañero')+'</b><div>🚌 Trabajas '+esc(x.diaTrabaja||'—')+' · 🏠 Libras '+esc(x.diaLibra||'—')+'</div>'+(x.nota?'<div>📝 '+esc(x.nota)+'</div>':'')+'</div></div>').join('');
+    h+=L.comp.map(([k,x])=>'<div class="fila" style="border-left:5px solid '+c.c+'"><div class="t"><b>🤝 '+esc(x.con||'Compañero')+'</b><div>🚌 Trabajas '+esc(x.diaTrabaja||'—')+' · 🏠 Libras '+esc(x.diaLibra||'—')+'</div>'+(x.nota?'<div>📝 '+esc(x.nota)+'</div>':'')+'</div><button class="chip" data-hd="comp|'+esc(k)+'">🗑️</button></div>').join('');
     h+=L.propios.map(([k,x])=>'<div class="fila" style="border-left:5px solid '+c.c+'"><div class="t"><b>'+fechaKey(k)+'</b><div>'+esc(x.texto||'')+' · '+(x.clase==='b-inter'?'Trabajas':'Libras')+'</div></div><button class="chip" data-hd="prop|'+esc(k)+'">🗑️</button></div>').join('');
-    if(L.comp.length)h+='<div class="card small">Para deshacer un cambio con un compañero, hazlo desde la app de Android.</div>';
   }else if(HV==='notas'){
     h+=L.notas.length?L.notas.map(([k,x])=>'<div class="fila" style="border-left:5px solid '+c.c+'"><div class="t" data-hn="'+esc(k)+'"><b>'+esc(x.fecha||fechaKey(k))+'</b><div>'+esc(x.texto||'')+'</div></div><button class="chip" data-hd="nota|'+esc(k)+'">🗑️</button></div>').join('')+'<div class="small">Toca una nota para editarla.</div>':vacio('No hay notas guardadas. Añade una tocando un día del calendario.');
   }
