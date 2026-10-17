@@ -680,6 +680,7 @@ async function editarNotaKey(k){
 async function borrarHist(x){
   const i=x.indexOf('|'),tipo=x.slice(0,i),k=x.slice(i+1);
   if(tipo==='vac'){await borrarVacaciones(k);return}
+  if(tipo==='par'){if(!confirm('¿Borrar este cambio?'))return;const up={};k.split('|').forEach(q=>{up['cambios/'+S.miID+'/'+q]=null});try{await db.ref().update(up)}catch(e){alert('No se pudo borrar: '+(e.code||e.message||e))}return}
   if(!confirm('¿Borrar esto?'))return;
   try{
     if(tipo==='comp'){
@@ -708,6 +709,16 @@ function hLista(){
     propios:Object.entries(cambios).filter(([,c])=>c&&!c.linkedUid&&!c.histKey&&/\(x \d+\/\d+\)/.test(c.texto||'')).sort((a,b)=>ordKey(a[0])-ordKey(b[0])),
     notas:Object.entries(notas||{}).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0))};
 }
+function parPropios(arr){
+  const usados=new Set(),out=[];
+  arr.forEach(([k,x])=>{
+    if(usados.has(k))return;usados.add(k);
+    const m=/\(x (\d+)\/(\d+)\)/.exec(x.texto||''),o=partesKey(k);let par=null;
+    if(m){const tk=arr.find(([k2,y2])=>!usados.has(k2)&&(()=>{const q=partesKey(k2);return q.y===o.y&&q.d===+m[1]&&q.m===+m[2]-1})());if(tk){par=tk;usados.add(tk[0])}}
+    out.push(par?[[k,x],par]:[[k,x]]);
+  });
+  return out;
+}
 function itemHist(k,x,col,hv){
   let d='';
   if(x.usado)d='<div>✔️ '+(x.accion==='cobrado'?'Cobrado':'Librado')+(x.diaAsignado?' · 📅 '+fechaKey(x.diaAsignado):'')+'</div>';
@@ -716,7 +727,7 @@ function itemHist(k,x,col,hv){
 function vHist(){
   const L=hLista(),sinUsar=a=>a.filter(([,x])=>!x.usado).length;
   if(!HV){
-    const cnt={generados:sinUsar(L.generados),convenio:sinUsar(L.convenio),vacaciones:L.vacaciones.length,pendientes:sinUsar(L.pendientes),cambios:L.comp.length+L.propios.length,notas:L.notas.length,graciosos:L.graciosos.length,l26:sinUsar(L.l26)};
+    const cnt={generados:sinUsar(L.generados),convenio:sinUsar(L.convenio),vacaciones:L.vacaciones.length,pendientes:sinUsar(L.pendientes),cambios:L.comp.length+parPropios(L.propios).length,notas:L.notas.length,graciosos:L.graciosos.length,l26:sinUsar(L.l26)};
     let h='<div class="sec">Tu historial</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+HCATS.map(c=>'<button class="tile" style="background:'+c.c+';margin:0" data-hv="'+c.k+'"><div class="circ">'+c.e+'</div><div><b>'+c.n+(cnt[c.k]?' ('+cnt[c.k]+')':'')+'</b><small>'+c.s+'</small></div></button>').join('')+'</div>';
     h+='<div class="card small" style="margin-top:14px">Toca una tarjeta para ver tus días generados, de convenio, pendientes y L-26. Desde ahí puedes añadirlos, usarlos, editarlos o borrarlos.</div>';
     $('main').innerHTML=h;return;
@@ -732,8 +743,12 @@ function vHist(){
     h+=L.vacaciones.length?L.vacaciones.map(([k,x])=>'<div class="fila" style="border-left:5px solid '+c.c+'"><div class="t"><b>'+fechaKey(k)+'</b><div>'+esc(x.texto||'Vacaciones')+'</div></div><button class="chip" data-hd="vac|'+esc(k)+'">🗑️</button></div>').join(''):vacio('No hay vacaciones marcadas');
   }else if(HV==='cambios'){
     h+=L.comp.length+L.propios.length?'':vacio('No hay cambios realizados');
+    const PP=parPropios(L.propios);
     h+=L.comp.map(([k,x])=>'<div class="fila" style="border-left:5px solid '+c.c+'"><div class="t"><b>🤝 '+esc(x.con||'Compañero')+'</b><div>🚌 Trabajas '+esc(x.diaTrabaja||'—')+' · 🏠 Libras '+esc(x.diaLibra||'—')+'</div>'+(x.nota?'<div>📝 '+esc(x.nota)+'</div>':'')+'</div><button class="chip" data-hd="comp|'+esc(k)+'">🗑️</button></div>').join('');
-    h+=L.propios.map(([k,x])=>'<div class="fila" style="border-left:5px solid '+c.c+'"><div class="t"><b>'+fechaKey(k)+'</b><div>'+esc(x.texto||'')+' · '+(x.clase==='b-inter'?'Trabajas':'Libras')+'</div></div><button class="chip" data-hd="prop|'+esc(k)+'">🗑️</button></div>').join('');
+    h+=PP.map(pr=>{const a=pr[0],b=pr[1],ks=pr.map(q=>q[0]).join('|'),w=pr.find(q=>q[1].clase==='b-inter'),l=pr.find(q=>q[1].clase!=='b-inter'),f=q=>q?fechaKey(q[0]).replace(/\/\d{4}$/,''):'—';
+      const tit=b?'🔄 '+f(a)+' ↔ '+f(b):'🔄 '+fechaKey(a[0]);
+      const det=b?'🚌 Trabajas '+f(w)+' · 🏠 Libras '+f(l):esc(a[1].texto||'')+' · '+(a[1].clase==='b-inter'?'Trabajas':'Libras');
+      return '<div class="fila" style="border-left:5px solid '+c.c+'"><div class="t"><b>'+tit+'</b><div>'+det+'</div></div><button class="chip" data-hd="par|'+esc(ks)+'">🗑️</button></div>'}).join('');
   }else if(HV==='notas'){
     h+=L.notas.length?L.notas.map(([k,x])=>'<div class="fila" style="border-left:5px solid '+c.c+'"><div class="t" data-hn="'+esc(k)+'"><b>'+esc(x.fecha||fechaKey(k))+'</b><div>'+esc(x.texto||'')+'</div></div><button class="chip" data-hd="nota|'+esc(k)+'">🗑️</button></div>').join('')+'<div class="small">Toca una nota para editarla.</div>':vacio('No hay notas guardadas. Añade una tocando un día del calendario.');
   }
