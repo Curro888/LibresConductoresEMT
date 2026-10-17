@@ -943,6 +943,22 @@ document.addEventListener('click',e=>{
   }
 });
 
+// ===== BOTÓN ATRÁS DEL MÓVIL =====
+function volverAtras(){
+  if(!$('modal').classList.contains('hide')){cerrarModal();return true}
+  if(PNL){cerrarPanelDia();return true}
+  if(S){
+    if(SEL){SEL=null;render();return true}
+    if(MG){MG=null;render();return true}
+    if(DO){DO=null;render();return true}
+    if(HV){HV=null;render();return true}
+    if(tab!=='cal'){tab='cal';document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.dataset.t==='cal'));$('main').dataset.t='';render();return true}
+  }else if(LF.modo){LF.modo=null;pantallaLogin();return true}
+  return false;
+}
+try{history.replaceState({lc:0},'');history.pushState({lc:1},'');
+window.addEventListener('popstate',()=>{if(volverAtras())history.pushState({lc:1},'');else history.back()})}catch(e){}
+
 // ===== ARRANQUE =====
 (function(){const p=LS.get('darkLC');const osc=p===null?(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches):!!p;if(osc)document.body.classList.add('dark')})();
 S=LS.get('sesionLC');
