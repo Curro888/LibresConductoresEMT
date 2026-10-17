@@ -6,7 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../config/firebase';
 import { ref, onValue, update, set, remove } from 'firebase/database';
-import { equipoBase, mesesArr, getDiasLibres, getDiasEspeciales, esFestivo, TURNOS_DISPONIBLES } from '../config/datos';
+import { anioInicial, equipoBase, mesesArr, getDiasLibres, getDiasEspeciales, esFestivo, TURNOS_DISPONIBLES } from '../config/datos';
 import { GRUPOS_CONDUCTORES } from '../config/libresConductores';
 import PerfilConductorForm, { PERFIL_VACIO, validarPerfil, perfilAMiembro, textoPerfil } from '../components/PerfilConductorForm';
 import { useTheme } from '../context/ThemeContext';
@@ -30,7 +30,7 @@ export default function GruposScreen({ navigation }) {
     const [tab, setTab] = useState('grupos'); // grupos | info
     const [turnoTab, setTurnoTab] = useState('A'); // subgrupo seleccionado
     const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
-    const [anio, setAnio] = useState(new Date().getFullYear());
+    const [anio, setAnio] = useState(anioInicial());
     const [infoGrupo, setInfoGrupo] = useState([]);
     const [creadorGrupo, setCreadorGrupo] = useState(null);
     const [administradores, setAdministradores] = useState({});

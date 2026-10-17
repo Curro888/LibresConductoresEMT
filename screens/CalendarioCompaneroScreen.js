@@ -6,7 +6,7 @@ import {
 import { db } from '../config/firebase';
 import { ref, set, push, onValue } from 'firebase/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { equipoBase, mesesArr, getDiasLibres, getDiasEspeciales, esFestivo, leerDia, claveDia } from '../config/datos';
+import { anioInicial, equipoBase, mesesArr, getDiasLibres, getDiasEspeciales, esFestivo, leerDia, claveDia } from '../config/datos';
 import { textoPerfil } from '../components/PerfilConductorForm';
 import { enviarPushA } from '../services/notifications';
 import { useTheme } from '../context/ThemeContext';
@@ -36,7 +36,7 @@ export default function CalendarioCompaneroScreen({ route, navigation }) {
     const { uid, modoCambio } = route.params || {};
     const [equipoActual, setEquipoActual] = useState(equipoBase);
     const persona = (equipoActual || []).find(x => x.id === uid);
-    const [anio, setAnio] = useState(new Date().getFullYear());
+    const [anio, setAnio] = useState(anioInicial());
     const [cambiosTodos, setCambiosTodos] = useState({});
     const [panelDia, setPanelDia] = useState(null); // {d, mIdx}
     const panelAnim = useRef(new Animated.Value(SW)).current;

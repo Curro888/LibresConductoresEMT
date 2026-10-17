@@ -5,14 +5,14 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../config/firebase';
 import { ref, onValue } from 'firebase/database';
-import { mesesArr, getDiasLibres, esDiaLibre, leerDia } from '../config/datos';
+import { anioInicial, mesesArr, getDiasLibres, esDiaLibre, leerDia } from '../config/datos';
 import { useTheme } from '../context/ThemeContext';
 
 export default function EstadisticasScreen({ navigation }) {
     const { theme } = useTheme();
     const [sesion, setSesion] = useState(null);
     const [cambios, setCambios] = useState({});
-    const [anio, setAnio] = useState(new Date().getFullYear());
+    const [anio, setAnio] = useState(anioInicial());
 
     useEffect(() => {
         let unsubCambios;

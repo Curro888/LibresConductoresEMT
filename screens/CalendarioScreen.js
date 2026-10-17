@@ -9,7 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { db } from '../config/firebase';
 import { ref, onValue, set, remove, update, push, get } from 'firebase/database';
 import { textoPerfil } from '../components/PerfilConductorForm';
-import { equipoBase, mesesArr, getDiasLibres, getDiasEspeciales, esFestivo, getGruposLibres, MAX_LIBRES_VAC, claveDia, leerDia, partesDia, claveDiaActual, esDiaLibre } from '../config/datos';
+import { anioInicial, equipoBase, mesesArr, getDiasLibres, getDiasEspeciales, esFestivo, getGruposLibres, MAX_LIBRES_VAC, claveDia, leerDia, partesDia, claveDiaActual, esDiaLibre } from '../config/datos';
 import { useTheme } from '../context/ThemeContext';
 import { useNetworkStatus } from '../hooks/useNetworkStatus'; // añadido: aviso de sin conexión
 import { enviarPushA } from '../services/notifications';
@@ -63,7 +63,7 @@ export default function CalendarioScreen({ navigation, route }) {
     const [menuDia, setMenuDia] = useState(null);
     const [modoSeleccion, setModoSeleccion] = useState(null);
     const [modalCompaneros, setModalCompaneros] = useState(null);
-    const [anio, setAnio] = useState(new Date().getFullYear());
+    const [anio, setAnio] = useState(anioInicial());
     const [notas, setNotas] = useState({});
     const [modalNota, setModalNota] = useState(null); // {d, mIdx, texto}
     const [modalGenerarManual, setModalGenerarManual] = useState(null); // {d, mIdx, texto}
@@ -187,7 +187,7 @@ export default function CalendarioScreen({ navigation, route }) {
             if (modoSeleccion) { setModoSeleccion(null); return true; }
             if (panelDia) { cerrarPanel(); return true; }
             if (menuDia) { setMenuDia(null); return true; }
-            if (anio !== new Date().getFullYear()) { setAnio(new Date().getFullYear()); return true; } // volver al año actual
+            if (anio !== anioInicial()) { setAnio(anioInicial()); return true; } // volver al año de inicio
             return false;
         });
         return () => handler.remove();
@@ -1147,7 +1147,7 @@ export default function CalendarioScreen({ navigation, route }) {
                 windowSize={5}
                 removeClippedSubviews={true}
                 getItemLayout={(data, index) => layoutsMeses[index]}
-                initialScrollIndex={new Date().getMonth()}
+                initialScrollIndex={anioInicial() === new Date().getFullYear() ? new Date().getMonth() : 0}
             />
             {panelDia && (
                 <TouchableOpacity style={s.overlay2} onPress={cerrarPanel} activeOpacity={1} />

@@ -1,4 +1,13 @@
-import { getLibresConductor, FESTIVOS_CONDUCTORES, SUBGRUPOS_CONDUCTORES } from './libresConductores';
+import { getLibresConductor, FESTIVOS_CONDUCTORES, SUBGRUPOS_CONDUCTORES, ANIOS_CONDUCTORES } from './libresConductores';
+
+// Año con el que se abren los calendarios: el año actual si hay libres de ese año;
+// si todavía no hay (p. ej. estamos en 2026 y solo hay datos de 2027), el primer año con datos.
+export function anioInicial() {
+    const hoy = new Date().getFullYear();
+    if (ANIOS_CONDUCTORES.includes(hoy)) return hoy;
+    const futuros = ANIOS_CONDUCTORES.filter(a => a > hoy);
+    return futuros.length ? Math.min(...futuros) : Math.max(...ANIOS_CONDUCTORES);
+}
 
 // En Libres Conductores no hay lista cerrada de compañeros: cada conductor/a
 // introduce sus propios datos al registrarse (ver components/PerfilConductorForm.js).
