@@ -12,6 +12,8 @@ import PerfilConductorForm, { PERFIL_VACIO, validarPerfil, perfilAMiembro, texto
 import { useTheme } from '../context/ThemeContext';
 
 const { width: SW } = Dimensions.get('window');
+// Tamaño exacto de cada casilla del calendario (7 columnas dentro de la tarjeta del mes: margen 10 + relleno 10 por lado).
+const CELDA = Math.floor((SW - 40) / 7);
 
 function getDiasEnMes(y, m) { return new Date(y, m + 1, 0).getDate(); }
 function getPrimerDia(y, m) { let d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; }
@@ -84,6 +86,7 @@ export default function GruposScreen({ navigation }) {
 
         let celdas = [];
         for (let i = 0; i < start; i++) celdas.push(<View key={'e'+i} style={sc.celda} />);
+        // (las casillas vacías del principio ocupan su hueco para que el día 1 caiga en su columna)
         for (let d = 1; d <= dias; d++) {
             const esLibre = libres.includes(d);
             const festivo = esFestivo(anio, mIdx, d);
@@ -96,8 +99,10 @@ export default function GruposScreen({ navigation }) {
             }
             if (festivo) { bg = '#ef4444'; tc = esLibre ? '#fff' : '#000'; }
             celdas.push(
-                <View key={d} style={[sc.celda, { backgroundColor: bg }, esHoy && sc.celdaHoy]}>
-                    <Text style={[sc.celdaNum, { color: tc }, esHoy && { fontWeight: '900' }]}>{d}</Text>
+                <View key={d} style={sc.celda}>
+                    <View style={[sc.celdaInterior, { backgroundColor: bg }, esHoy && sc.celdaHoy]}>
+                        <Text style={[sc.celdaNum, { color: tc }, esHoy && { fontWeight: '900' }]}>{d}</Text>
+                    </View>
                 </View>
             );
         }
@@ -415,12 +420,13 @@ function getStyles(theme) {
         calTitulo: { fontSize: 16, fontWeight: '800', color: theme.texto },
         mesCard: { backgroundColor: theme.card, margin: 10, borderRadius: 14, padding: 10, elevation: 1 },
         mesNombre: { fontSize: 14, fontWeight: '800', color: theme.texto, marginBottom: 6, textAlign: 'center' },
-        diasHeader: { flexDirection: 'row', marginBottom: 2 },
-        diaLetra: { flex: 1, textAlign: 'center', fontSize: 9, fontWeight: '700', color: theme.textoTenue },
-        grid: { flexDirection: 'row', flexWrap: 'wrap' },
-        celda: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 4 },
+        diasHeader: { flexDirection: 'row', marginBottom: 2, width: CELDA * 7, alignSelf: 'center' },
+        diaLetra: { width: CELDA, textAlign: 'center', fontSize: 10, fontWeight: '700', color: theme.textoTenue },
+        grid: { flexDirection: 'row', flexWrap: 'wrap', width: CELDA * 7, alignSelf: 'center' },
+        celda: { width: CELDA, height: CELDA, padding: 1.5 },
+        celdaInterior: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 6 },
         celdaHoy: { borderWidth: 2, borderColor: theme.primario },
-        celdaNum: { fontSize: 11 },
+        celdaNum: { fontSize: 12, textAlign: 'center', textAlignVertical: 'center', includeFontPadding: false },
         infoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
         infoTitulo: { fontSize: 16, fontWeight: '800', color: theme.texto },
         btnAdd: { backgroundColor: theme.primario, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
