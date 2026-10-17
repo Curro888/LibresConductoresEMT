@@ -233,6 +233,13 @@ export function nombreGrupo(grupo) {
     if (s === 'R') return 'R.S.N ' + g.slice(1);
     return 'Grupo ' + g;
 }
+// Texto largo con subgrupo: "Grupo 4 · C", "Búhos 1 · A", "R.S.N A1".
+export function nombreGrupoSub(grupo, sub) {
+    const g = String(grupo || '');
+    const s = sistemaDe(g);
+    if (s === 'R') return 'R.S.N ' + g.slice(1) + (sub || '');
+    return nombreGrupo(g) + (sub ? ' · ' + sub : '');
+}
 // Texto corto grupo+subgrupo: "G1·H", "Bú2·C", "RSN A1".
 export function etiquetaGrupo(grupo, sub) {
     const g = String(grupo || '');

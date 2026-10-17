@@ -9,7 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { db } from '../config/firebase';
 import { ref, onValue, set, remove, update, push, get } from 'firebase/database';
 import { textoPerfil } from '../components/PerfilConductorForm';
-import { nombreGrupo } from '../config/libresConductores';
+import { nombreGrupoSub } from '../config/libresConductores';
 import { anioInicial, equipoBase, mesesArr, getDiasLibres, getDiasEspeciales, esFestivo, getGruposLibres, MAX_LIBRES_VAC, claveDia, leerDia, partesDia, claveDiaActual, esDiaLibre } from '../config/datos';
 import { useTheme } from '../context/ThemeContext';
 import { useNetworkStatus } from '../hooks/useNetworkStatus'; // añadido: aviso de sin conexión
@@ -1126,7 +1126,7 @@ export default function CalendarioScreen({ navigation, route }) {
             )}
             <View style={s.header}>
                 <Text style={s.titulo}>📅 Turnos</Text>
-                <Text style={s.sub}>{sesion.miNombreCompleto} · {nombreGrupo(grupo)}</Text>
+                <Text style={s.sub}>{sesion.miNombreCompleto} · {nombreGrupoSub(grupo, sesion.miTipoSesion)}</Text>
                 <View style={s.anioNav}>
                     <TouchableOpacity onPress={() => { setAnio(anio - 1); scrollRef.current?.scrollToOffset({ offset: 0, animated: false }); }} style={s.anioBtn}>
                         <Text style={s.anioBtnTexto}>◀</Text>
