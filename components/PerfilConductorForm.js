@@ -13,10 +13,7 @@ export const PERFIL_VACIO = { g: '', t: '', c: false, l: '', tu: '', e: '' };
 
 export function validarPerfil(p) {
     if (!p.g || !p.t) return 'Elige tu grupo y tu subgrupo';
-    if (!p.c) {
-        if (!String(p.l || '').trim()) return 'Indica tu línea';
-        if (!String(p.tu || '').trim()) return 'Indica tu turno';
-    }
+    // Línea, turno y escalafón son opcionales (pueden cambiar en cualquier momento).
     return null;
 }
 
@@ -24,8 +21,8 @@ export function validarPerfil(p) {
 export function perfilAMiembro(p) {
     const m = { g: String(p.g), t: String(p.t), c: !!p.c };
     if (!p.c) {
-        m.l = String(p.l || '').trim();
-        m.tu = String(p.tu || '').trim();
+        if (String(p.l || '').trim()) m.l = String(p.l).trim();
+        if (String(p.tu || '').trim()) m.tu = String(p.tu).trim();
     }
     if (String(p.e || '').trim()) m.e = String(p.e).trim();
     return m;
@@ -82,14 +79,14 @@ export default function PerfilConductorForm({ value, onChange }) {
 
             {!v.c && (
                 <View>
-                    <Text style={s.label}>Línea</Text>
-                    <TextInput style={s.input} placeholder="Ej: 402 (la E2)" keyboardType="numeric" value={v.l} onChangeText={t => set('l', soloNumeros(t))} />
-                    <Text style={s.label}>Turno</Text>
+                    <Text style={s.label}>Línea (opcional)</Text>
+                    <TextInput style={s.input} placeholder="Ej: 402 (la E2) o N5 (búho)" autoCapitalize="characters" value={v.l} onChangeText={t => set('l', String(t).toUpperCase().replace(/[^0-9A-Z]/g, ''))} />
+                    <Text style={s.label}>Turno (opcional)</Text>
                     <TextInput style={s.input} placeholder="Ej: 5" keyboardType="numeric" value={v.tu} onChangeText={t => set('tu', soloNumeros(t))} />
                 </View>
             )}
 
-            <Text style={s.label}>{v.c ? 'Escalafón en la empresa' : 'Escalafón en la línea'}</Text>
+            <Text style={s.label}>{(v.c ? 'Escalafón en la empresa' : 'Escalafón en la línea') + ' (opcional)'}</Text>
             <TextInput style={s.input} placeholder="Ej: 25 (puedes cambiarlo cuando quieras)" keyboardType="numeric" value={v.e} onChangeText={t => set('e', soloNumeros(t))} />
         </View>
     );
