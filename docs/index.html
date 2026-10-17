@@ -332,6 +332,7 @@ async function responderSol(key,so,ok){
 function accionDia(y,m,d,c){
   if(c==='nota'){editarNotaDia(y,m,d)}
   else if(c==='propio'){iniciarSel('propio',d,m,null)}
+  else if(c==='b-vac'){vacModal(y,m,d)}
   else if(c==='comp'){
     const otros=miembros.filter(x=>x.id!==S.miID);
     modal('<h2>🤝 Cambio con compañero</h2><div class="small">Día que trabajarás: '+d+'/'+(m+1)+'. ¿Con quién?</div>'+otros.map(p=>'<button class="btn" data-cp="'+esc(p.id)+'">'+esc(p.n)+'<small>'+esc(textoPerfil(p))+'</small></button>').join('')+'<button class="btn" style="margin-top:14px" onclick="cerrarModal()">Cancelar</button>');
@@ -413,6 +414,57 @@ function abrirDia(y,m,d){
   modal(h);
   $('modalc').onclick=ev=>{const b=ev.target.closest('[data-cam]');if(!b)return;accionDia(y,m,d,b.dataset.cam)};
 }
+const MAX_LIBRES_VAC=8;
+function vacModal(y,m,d){
+  const iso=(yy,mm,dd)=>yy+'-'+String(mm+1).padStart(2,'0')+'-'+String(dd).padStart(2,'0'),st='width:100%;padding:10px;font-size:16px;margin:4px 0 12px;border:1px solid #cbd5e1;border-radius:10px;box-sizing:border-box';
+  modal('<h2>🌴 Periodo de vacaciones</h2><div class="small">Desde</div><input type="date" id="vi" style="'+st+'" value="'+iso(y,m,d)+'"><div class="small">Hasta (incluido)</div><input type="date" id="vf" style="'+st+'" value="'+iso(y,m,d)+'"><button class="btn fill" id="vok">✅ Guardar vacaciones</button><button class="btn" onclick="cerrarModal()">Cancelar</button>');
+  $('modalc').onclick=ev=>{if(ev.target.id==='vok')confirmarVac()};
+}
+async function chequeoExceso(sim,finTxt){
+  const {g,t}=misDatos();let tot=0;
+  Object.entries(sim).forEach(([k,c])=>{if(!c||c.clase!=='b-vac')return;const o=partesKey(k);if(o.y!==anio||esFestivo(o.y,o.m,o.d))return;if(libreBase(anio,g,t,o.m,o.d))tot++});
+  const exceso=Math.max(0,tot-MAX_LIBRES_VAC);
+  const H=(await db.ref('historial2/'+S.miID).once('value')).val()||{};
+  const ya=Object.entries(H).filter(([,h])=>h&&h.subtipo==='exceso_vac'&&h.anio===anio);
+  if(exceso>ya.length){for(let i=0;i<exceso-ya.length;i++)await db.ref('historial2/'+S.miID).push().set({cat:'generado',subtipo:'exceso_vac',anio:anio,ts:Date.now(),fecha:finTxt||'',nota:'Exceso de libres en vacaciones',usado:false})}
+  else if(exceso<ya.length){const nu=ya.filter(([,h])=>!h.usado);for(let i=0;i<Math.min(ya.length-exceso,nu.length);i++)await db.ref('historial2/'+S.miID+'/'+nu[i][0]).remove()}
+}
+async function confirmarVac(){
+  const a=$('vi').value,b=$('vf').value;
+  if(!a||!b){alert('Rellena el día de inicio y el de fin.');return}
+  const pa=a.split('-').map(Number),pb=b.split('-').map(Number),fi=new Date(pa[0],pa[1]-1,pa[2]),ff=new Date(pb[0],pb[1]-1,pb[2]);
+  if(ff<fi){alert('La fecha fin debe ser igual o posterior a la de inicio.');return}
+  if((ff-fi)/864e5>120){alert('El periodo es demasiado largo (máximo 120 días).');return}
+  try{
+    const up={},sim=Object.assign({},cambios),H=hist||{};let n=0;
+    for(let f=new Date(fi);f<=ff;f.setDate(f.getDate()+1)){
+      const yy=f.getFullYear(),mm=f.getMonth(),dd=f.getDate(),k=claveDia(yy,mm,dd),ex=cambios[claveActual(cambios,yy,mm,dd)];
+      if(ex&&ex.linkedUid)continue;
+      up['cambios/'+S.miID+'/'+k]={clase:'b-vac',texto:'Vacaciones'};sim[k]={clase:'b-vac'};n++;
+      if(esFestivo(yy,mm,dd)){const ft=dd+'/'+(mm+1)+'/'+yy;
+        if(!Object.values(H).some(h=>h&&h.subtipo==='festivo_auto'&&h.fecha===ft))
+          up['historial2/'+S.miID+'/'+db.ref('historial2/'+S.miID).push().key]={cat:'generado',subtipo:'festivo_auto',ts:Date.now(),fecha:ft,nota:'Festivo trabajado/librado',usado:false}}
+    }
+    await db.ref().update(up);
+    const h0=new Date();h0.setHours(0,0,0,0);
+    if(h0>=ff)await chequeoExceso(sim,pb[2]+'/'+pb[1]+'/'+pb[0]);
+    cerrarModal();alert('✅ '+n+' días marcados como vacaciones.');
+  }catch(e){alert('No se pudo guardar: '+(e.code||e.message||e))}
+}
+async function borrarVacaciones(key){
+  const o=partesKey(key),f0=new Date(o.y,o.m,o.d),keys=[key],isV=(f)=>{const k=claveActual(cambios,f.getFullYear(),f.getMonth(),f.getDate()),c=cambios[k];return c&&c.clase==='b-vac'?k:null};
+  let f=new Date(f0),k;
+  for(;;){f.setDate(f.getDate()-1);k=isV(f);if(!k)break;keys.push(k)}
+  f=new Date(f0);
+  for(;;){f.setDate(f.getDate()+1);k=isV(f);if(!k)break;keys.push(k)}
+  if(!confirm('¿Borrar todo el periodo de vacaciones ('+keys.length+' días)?'))return;
+  try{
+    const up={},fechas=keys.map(k=>{const q=partesKey(k);return q.d+'/'+(q.m+1)+'/'+q.y}),sim=Object.assign({},cambios);
+    keys.forEach(k=>{up['cambios/'+S.miID+'/'+k]=null;delete sim[k]});
+    Object.entries(hist||{}).forEach(([hk,h])=>{if(h&&h.subtipo==='festivo_auto'&&fechas.includes(h.fecha)&&!h.usado)up['historial2/'+S.miID+'/'+hk]=null});
+    await db.ref().update(up);await chequeoExceso(sim);cerrarModal();
+  }catch(e){alert('No se pudo borrar: '+(e.code||e.message||e))}
+}
 async function borrarCambioComp(key,prev,hk){
   const other=prev.linkedUid,lk=prev.linkedKey;
   if(!confirm('¿Borrar este cambio con tu compañero? Se quitará de los dos calendarios.'))return;
@@ -431,6 +483,7 @@ async function marcarDia(y,m,d,clase){
   try{
     if(clase==='quitar'){
       if(prev&&prev.linkedUid){await borrarCambioComp(key,prev);return}
+      if(prev&&prev.clase==='b-vac'){await borrarVacaciones(key);return}
       if(prev&&prev.histKey&&prev.texto==='Libre sin compensación'){
         if(hist[prev.histKey]&&hist[prev.histKey].usado){alert('Este día ya se ha usado. Gestiónalo desde la app de Android.');return}
         await db.ref('historial2/'+S.miID+'/'+prev.histKey).remove();await db.ref('cambios/'+S.miID+'/'+key).remove();cerrarModal();return;
@@ -510,6 +563,7 @@ async function editarNotaKey(k){
 }
 async function borrarHist(x){
   const i=x.indexOf('|'),tipo=x.slice(0,i),k=x.slice(i+1);
+  if(tipo==='vac'){await borrarVacaciones(k);return}
   if(!confirm('¿Borrar esto?'))return;
   try{
     if(tipo==='comp'){
