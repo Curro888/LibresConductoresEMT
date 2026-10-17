@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { db } from '../config/firebase';
 import { ref, onValue, push, set, remove, update, get } from 'firebase/database';
-import { mesesArr, equipoBase, getDiasLibres, MAX_LIBRES_VAC, esFestivo, claveDia, claveDiaVieja, leerDia, partesDia, claveDiaActual } from '../config/datos';
+import { anioInicial, mesesArr, equipoBase, getDiasLibres, MAX_LIBRES_VAC, esFestivo, claveDia, claveDiaVieja, leerDia, partesDia, claveDiaActual } from '../config/datos';
 import { useTheme } from '../context/ThemeContext';
 
 const { width: SW } = Dimensions.get('window');
@@ -360,7 +360,7 @@ export default function HistorialScreen({ navigation, route }) {
         const partes = String(fecha).split('/');
         const dia = parseInt(partes[0]);
         const mes = parseInt(partes[1]);
-        const anio = parseInt(partes[2]) || 2026;
+        const anio = parseInt(partes[2]) || anioInicial(); // sin año escrito: el año con el que abre la app
         if (isNaN(dia) || isNaN(mes)) return null;
         return `${anio}_${mes}_${dia}`;
     }
