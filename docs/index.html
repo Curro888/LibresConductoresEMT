@@ -370,7 +370,8 @@ async function confirmarSel(dB,mB){
 }
 function render(){
   if(!S)return;
-  $('hsub').textContent=S.miNombreCompleto+' · '+nombreGrupoSub(S.miGrupoSesion,S.miTipoSesion);
+  const pcs=SEL&&SEL.tipo==='comp'&&tab==='cal'?miembros.find(x=>x.id===SEL.comp):null;
+  $('hsub').textContent=pcs?'📅 Calendario de '+pcs.n+' · '+textoPerfil(pcs):S.miNombreCompleto+' · '+nombreGrupoSub(S.miGrupoSesion,S.miTipoSesion);
   const m=$('main'),y=m.scrollTop,mismo=m.dataset.t===tab;
   if(tab==='cal')vCal();else if(tab==='comp')vComp();else if(tab==='hist')vHist();else if(tab==='gru')vGru();else vAj();
   if(mismo&&m.dataset.sc)m.scrollTop=y;m.dataset.t=tab;
