@@ -176,6 +176,8 @@ function avisoSinDatos(g,t){return getLibres(anio,g,t)===VACIO?'<div class="card
 
 // ===== LOGIN =====
 let LF={modo:null,P:null,sis:'C'};
+const CT_COD='CT';
+function esCT(){return !!(S&&S.modoGrupo&&S.grupoActual===CT_COD)}
 function pantallaLogin(){
   $('nav').classList.add('hide');$('hsub').textContent='¿Cómo quieres entrar?';
   const gs=LS.get('gruposGuardadosLC')||[];
@@ -185,15 +187,16 @@ function pantallaLogin(){
     h+='<div class="sec">Empezar</div>';
     h+='<button class="tile" style="background:#2563eb" data-modo="ind"><div class="circ">👤</div><div><b>Individual</b><small>Solo para mí</small></div></button>';
     h+='<button class="tile" style="background:#16a34a" data-modo="unir"><div class="circ">👥</div><div><b>Unirme a un grupo</b><small>Con el código y la contraseña</small></div></button>';
+    h+='<button class="tile" style="background:#7c3aed" data-modo="ct"><div class="circ">🔁</div><div><b>Correturnos</b><small>Todos los correturnos, por escalafón</small></div></button>';
     h+='<button class="tile" style="background:#be185d" data-modo="crear"><div class="circ">➕</div><div><b>Crear un grupo nuevo</b><small>Para tus compañeros</small></div></button>';
     h+='<div class="card small" style="margin-top:14px">📲 En el iPhone: pulsa el botón Compartir de Safari y elige <b>«Añadir a pantalla de inicio»</b> para usarla como una app.</div>';
   }else{
-    const t={ind:'Individual',unir:'Unirme a un grupo',crear:'Crear un grupo'}[LF.modo];
+    const t={ind:'Individual',unir:'Unirme a un grupo',crear:'Crear un grupo',ct:'Correturnos'}[LF.modo];
     h+='<div class="card"><button class="btn" style="margin:0 0 6px" data-modo="">‹ Volver</button><h2 style="margin:8px 0">'+t+'</h2>';
     if(LF.modo==='unir')h+='<label>Código del grupo</label><input type="text" id="lf-cod" autocapitalize="off"><label>Contraseña del grupo</label><input type="password" id="lf-pass">';
     if(LF.modo==='crear')h+='<label>Nombre del grupo</label><input type="text" id="lf-gn"><label>Contraseña</label><input type="password" id="lf-pass"><label>Repite la contraseña</label><input type="password" id="lf-pass2">';
     h+='<label>Tu nombre</label><input type="text" id="lf-nom"><label>Tu número de empleado</label><input type="tel" id="lf-id">';
-    h+='<div id="pf"></div><button class="btn fill" data-ok="1">'+(LF.modo==='ind'?'Entrar':LF.modo==='unir'?'Unirme':'Crear grupo')+'</button></div>';
+    h+='<div id="pf"></div><button class="btn fill" data-ok="1">'+(LF.modo==='ind'?'Entrar':LF.modo==='unir'?'Unirme':LF.modo==='ct'?'Entrar en Correturnos':'Crear grupo')+'</button></div>';
   }
   $('main').innerHTML=h;
   if(LF.modo)pintaForm($('pf'),LF);
@@ -204,9 +207,11 @@ function pintaForm(cont,F){
   let h='<label>Tu sistema de libres</label><div class="chips">'+SISTEMAS.map(x=>'<button class="chip'+(sis===x.id?' on':'')+'" data-fs="'+x.id+'">'+x.nombre+'</button>').join('')+'</div>';
   h+='<label>'+(rsn?'Tu grupo R.S.N (primera letra de tu código)':'Tu grupo de libres')+'</label><div class="chips">'+sd.grupos.map(g=>'<button class="chip'+(P.g===g?' on':'')+'" data-fg="'+g+'">'+tg(g)+'</button>').join('')+'</div>';
   h+='<label>'+(rsn?'Resto de tu código (ej. en A1 es el 1; en AB es la B)':'Tu subgrupo')+'</label><div class="chips">'+subgruposDe(P.g||sd.grupos[0]).map(x=>'<button class="chip'+(P.t===x?' on':'')+'" data-ft="'+x+'">'+x+'</button>').join('')+'</div>';
-  h+='<label>¿Tienes línea asignada?</label><div class="chips"><button class="chip'+(!P.c?' on':'')+'" data-fc="0">Sí, línea fija</button><button class="chip'+(P.c?' on':'')+'" data-fc="1">Correturnos</button></div>';
+  const ctLogin=F.modo==='ct',ctObl=ctLogin||(F===EF&&esCT()&&P.c);
+  if(!ctLogin)h+='<label>¿Tienes línea asignada?</label><div class="chips"><button class="chip'+(!P.c?' on':'')+'" data-fc="0">Sí, línea fija</button><button class="chip'+(P.c?' on':'')+'" data-fc="1">Correturnos</button></div>';
+  if(F===EF&&esCT()&&!P.c)h+='<div class="card small">Al guardar con línea fija saldrás de la lista de Correturnos y los que van detrás subirán un puesto.</div>';
   if(!P.c)h+='<label>Línea (opcional)</label><input type="text" id="pf-l" placeholder="Ej: 402 (la E2) o N5 (búho)" autocapitalize="characters" value="'+esc(P.l||'')+'"><label>Turno (opcional)</label><input type="tel" id="pf-tu" placeholder="Ej: 5" value="'+esc(P.tu||'')+'">';
-  h+='<label>'+(P.c?'Escalafón en la empresa':'Escalafón en la línea')+' (opcional)</label><input type="tel" id="pf-e" placeholder="Ej: 25 (puedes cambiarlo cuando quieras)" value="'+esc(P.e||'')+'">';
+  h+='<label>'+(P.c?'Escalafón en la empresa':'Escalafón en la línea')+(ctObl?' (obligatorio)':' (opcional)')+'</label><input type="tel" id="pf-e" placeholder="Ej: 25 (puedes cambiarlo cuando quieras)" value="'+esc(P.e||'')+'">';
   cont.innerHTML=h;
   const bind=(id,k,f)=>{const el=cont.querySelector('#'+id);if(el)el.addEventListener('input',()=>{el.value=f(el.value);P[k]=el.value})};
   bind('pf-l','l',v=>v.toUpperCase().replace(/[^0-9A-Z]/g,''));bind('pf-tu','tu',v=>v.replace(/\D/g,''));bind('pf-e','e',v=>v.replace(/\D/g,''));
@@ -233,7 +238,14 @@ async function enviarLogin(){
   await authP;
   try{
     if(LF.modo==='ind'){S={miID:id,miNombreCompleto:nom,modoGrupo:false,grupoActual:null,miGrupoSesion:m.g,miTipoSesion:m.t,miPerfil:m}}
-    else if(LF.modo==='unir'){
+    else if(LF.modo==='ct'){
+      if(!/^\d+$/.test(String(m.e||'')))return alert('Escribe tu escalafón en la empresa (solo el número)');
+      const g=(await db.ref('grupos/'+CT_COD).once('value')).val();
+      if(!g||!g.nombre)await db.ref('grupos/'+CT_COD).update({nombre:'Correturnos',pass:'',creador:id});
+      m.c=true;await db.ref('grupos/'+CT_COD+'/miembros/'+id).set(Object.assign({n:nom,id:id},m));
+      S={miID:id,miNombreCompleto:nom,modoGrupo:true,grupoActual:CT_COD,miGrupoSesion:m.g,miTipoSesion:m.t,miPerfil:m};
+      guardarGrupoEnLista({codigo:CT_COD,id:id,nombre:'Correturnos',perfil:m});
+    }else if(LF.modo==='unir'){
       const cod=v('lf-cod'),pass=v('lf-pass');if(!cod||!pass)return alert('Rellena todos los campos');
       const g=(await db.ref('grupos/'+cod).once('value')).val();
       if(!g)return alert('Grupo no encontrado. Revisa que el código esté bien escrito.');
@@ -268,7 +280,7 @@ async function entrarGuardado(i){
 $('main').addEventListener('click',e=>{
   if(S)return;
   const b=e.target.closest('button');if(!b)return;
-  if(b.dataset.modo!==undefined){LF.modo=b.dataset.modo||null;LF.P={g:'',t:'',c:false,l:'',tu:'',e:''};LF.sis='C';pantallaLogin()}
+  if(b.dataset.modo!==undefined){LF.modo=b.dataset.modo||null;LF.P={g:'',t:'',c:b.dataset.modo==='ct',l:'',tu:'',e:''};LF.sis='C';pantallaLogin()}
   else if(b.dataset.ok)enviarLogin();
   else if(b.dataset.ent!==undefined)entrarGuardado(+b.dataset.ent);
   else if(b.dataset.del!==undefined){if(confirm('¿Quitar este grupo de la lista?')){const l=LS.get('gruposGuardadosLC')||[];l.splice(+b.dataset.del,1);LS.set('gruposGuardadosLC',l);pantallaLogin()}}
@@ -620,10 +632,28 @@ async function marcarDia(y,m,d,clase){
 }
 
 // --- Compañeros ---
+let CTQ='';
+function pintaCT(){
+  const cont=$('ctlista');if(!cont)return;
+  const hoy=new Date(),y=hoy.getFullYear(),m=hoy.getMonth(),d=hoy.getDate(),num=p=>/^\d+$/.test(String(p.e||''))?+p.e:1e9;
+  let L=miembros.slice().sort((a,b)=>num(a)-num(b)||String(a.n).localeCompare(String(b.n)));
+  if(CTQ)L=L.filter(p=>String(p.e||'').indexOf(CTQ)===0);
+  let h='<div class="small" style="margin:0 0 8px">'+miembros.length+' correturnos en la app'+(CTQ?' · '+L.length+' resultado'+(L.length===1?'':'s'):'')+'</div>';
+  if(!L.length)h+='<div class="card small">'+(miembros.length?'Nadie con ese número todavía.':'Cargando…')+'</div>';
+  h+=L.map(p=>{const cam=p.id===S.miID?cambios:(cambiosTodos[p.id]||{}),libre=esLibreFinal(y,p.g,p.t,m,d,cam);
+    return '<div class="fila'+(p.id===S.miID?' yo':'')+'" data-p="'+esc(p.id)+'"><div class="ico'+(libre?' libre':'')+'">'+(libre?'🏠':'🚌')+'</div><div class="t"><b>'+(p.e?'Nº '+esc(p.e)+' · ':'')+esc(p.n)+(p.id===S.miID?' (yo)':'')+'</b><div>'+esc(etiquetaGrupo(p.g,p.t))+' · hoy '+(libre?'libra':'trabaja')+'</div></div><div style="font-size:20px">📅</div></div>'}).join('');
+  cont.innerHTML=h;
+}
 function vComp(){
   const hoy=new Date(),y=hoy.getFullYear(),m=hoy.getMonth(),d=hoy.getDate();
   let h='<div class="sec">Hoy es '+DSEM[hoy.getDay()]+', '+d+' de '+MESES[m]+'</div>';
   if(!S.modoGrupo){h+='<div class="card small">Estás en modo individual. Para ver a tus compañeros, cierra sesión y entra o crea un grupo.</div>';$('main').innerHTML=h;return}
+  if(esCT()){
+    const nuevo=!$('ctq')||$('main').dataset.t!=='comp';
+    if(nuevo){$('main').innerHTML=h+'<input type="tel" id="ctq" placeholder="🔎 Buscar por número de escalafón" style="width:100%;padding:12px;font-size:16px;margin:4px 0 10px;border:1px solid #cbd5e1;border-radius:12px;box-sizing:border-box" value="'+esc(CTQ)+'"><div id="ctlista"></div>';
+      $('ctq').addEventListener('input',()=>{CTQ=$('ctq').value.replace(/\D/g,'');pintaCT()})}
+    pintaCT();return;
+  }
   if(!miembros.length)h+='<div class="card small">Cargando miembros…</div>';
   miembros.slice().sort((a,b)=>(a.id===S.miID?-1:b.id===S.miID?1:String(a.n).localeCompare(String(b.n)))).forEach(p=>{
     const cam=p.id===S.miID?cambios:(cambiosTodos[p.id]||{}),libre=esLibreFinal(y,p.g,p.t,m,d,cam);
@@ -655,7 +685,8 @@ function vGru(){
 // --- Ajustes ---
 function vAj(){
   let h='<div class="card"><b>'+esc(S.miNombreCompleto)+'</b><div class="small">Nº empleado '+esc(S.miID)+'</div><div style="margin-top:8px">'+esc(textoPerfil(S.miPerfil||{g:S.miGrupoSesion,t:S.miTipoSesion}))+'</div><button class="btn fill" data-aj="perfil">✏️ Editar mi perfil</button><div class="small" style="margin-top:6px">Si te cambian de grupo de libres, cámbialo aquí: el calendario se actualiza desde el 1 de enero.</div></div>';
-  if(S.modoGrupo)h+='<div class="card"><b>👥 Grupo</b><div class="small" style="word-break:break-all">Código: '+esc(S.grupoActual)+'</div><button class="btn fill" data-aj="grupo">✏️ Editar grupo</button><div class="small" style="margin-top:6px">Añade a compañeros que no usan la app o corrige sus datos.</div></div>';
+  if(esCT())h+='<div class="card"><b>🔁 Correturnos</b><div class="small" style="margin-top:6px">Grupo abierto. Si cambias tu perfil a línea fija, saldrás de la lista y los que van detrás subirán un puesto.</div></div>';
+  else if(S.modoGrupo)h+='<div class="card"><b>👥 Grupo</b><div class="small" style="word-break:break-all">Código: '+esc(S.grupoActual)+'</div><button class="btn fill" data-aj="grupo">✏️ Editar grupo</button><div class="small" style="margin-top:6px">Añade a compañeros que no usan la app o corrige sus datos.</div></div>';
   h+='<div class="card"><button class="btn" data-aj="dark" style="margin-top:0">'+(document.body.classList.contains('dark')?'☀️ Modo claro':'🌙 Modo oscuro')+'</button><button class="btn red" data-aj="salir">🚪 Cerrar sesión</button></div>';
   h+='<div class="card small" style="text-align:center">Libres Conductores EMT · versión web para iPhone</div>';
   $('main').innerHTML=h;
@@ -814,9 +845,20 @@ function editarPerfil(){
   pintaForm($('pf2'),EF);
   $('pf-ok').onclick=guardarPerfil;
 }
+async function salirCT(m){
+  const yo=miembros.find(x=>x.id===S.miID),oldE=yo&&/^\d+$/.test(String(yo.e||''))?+yo.e:null,up={};
+  up['grupos/'+CT_COD+'/miembros/'+S.miID]=null;up['presencia/'+CT_COD+'/'+S.miID]=null;
+  if(oldE!==null)miembros.forEach(p=>{if(p.id!==S.miID&&/^\d+$/.test(String(p.e||''))&&+p.e>oldE)up['grupos/'+CT_COD+'/miembros/'+p.id+'/e']=String(+p.e-1)});
+  await db.ref().update(up);
+  const l=(LS.get('gruposGuardadosLC')||[]).filter(a=>!(a.codigo===CT_COD&&a.id===S.miID));LS.set('gruposGuardadosLC',l);
+  S={miID:S.miID,miNombreCompleto:S.miNombreCompleto,modoGrupo:false,grupoActual:null,miGrupoSesion:m.g,miTipoSesion:m.t,miPerfil:m};guardarSesion();
+  cerrarModal();alert('✅ Has salido de Correturnos. Los que iban detrás de ti han subido un puesto. Ahora estás en modo individual.');iniciarApp();
+}
 async function guardarPerfil(){
   const err=validaPerfil(EF.P);if(err)return alert(err);
   const m=perfilAMiembro(EF.P);
+  if(esCT()&&m.c&&!/^\d+$/.test(String(m.e||'')))return alert('Escribe tu escalafón en la empresa (solo el número)');
+  if(esCT()&&!m.c){try{await salirCT(m)}catch(e){alert('No se pudo guardar: '+(e.code||e.message||e))}return}
   try{
     if(S.modoGrupo)await db.ref('grupos/'+S.grupoActual+'/miembros/'+S.miID).set(Object.assign({n:S.miNombreCompleto,id:S.miID},m));
     S.miGrupoSesion=m.g;S.miTipoSesion=m.t;S.miPerfil=m;guardarSesion();
