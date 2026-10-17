@@ -62,6 +62,8 @@ input[type=text],input[type=password],input[type=tel]{width:100%;border:2px soli
 .c.cl{background:#fee2e2;color:#991b1b;border-color:#ef4444}.c.pend{background:#f3e8ff;color:#6b21a8;border-color:#9333ea}
 .c.gen{background:#fdf2f8;color:#be185d;border-color:#f472b6}.c.l26{background:#fefce8;color:#b45309;border-color:#f59e0b}
 .c.hoy{font-weight:900;outline:2px solid var(--pri)}
+.c.nota::after{content:'';position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:2px;background:#0891b2}
+nav button{font-size:10px}
 .anio{display:flex;align-items:center;justify-content:center;gap:16px;margin:6px auto 10px}
 .anio button{width:40px;height:40px;border-radius:20px;border:0;background:var(--pric);color:var(--pri);font-size:18px;font-weight:900}
 .anio b{font-size:18px}
@@ -86,6 +88,7 @@ input[type=text],input[type=password],input[type=tel]{width:100%;border:2px soli
 <nav id="nav" class="hide">
 <button data-t="cal" class="on"><span>📅</span>Calendario</button>
 <button data-t="comp"><span>👥</span>Compañeros</button>
+<button data-t="hist"><span>📋</span>Historial</button>
 <button data-t="gru"><span>🗓️</span>Grupos</button>
 <button data-t="aj"><span>⚙️</span>Ajustes</button>
 </nav>
@@ -139,6 +142,7 @@ let cambios={}, cambiosTodos={}, miembros=[], offs=[];
 let grVer={s:null,g:null,t:null};
 let hbTimer=null;
 let SEL=null,PEND=null,vistas=new Set(),vigPend=null;
+let hist={},notas={},HV=null;
 
 function guardarSesion(){LS.set('sesionLC',S)}
 function modal(html){$('modalc').innerHTML=html;$('modal').classList.remove('hide')}
@@ -161,6 +165,7 @@ function mesHTML(y,m,g,t,cam,opt){
     if(esFestivo(y,m,d))cl+=' fest'+(real?' libre':'');
     if(c){cl+=' '+({'b-vac':'vac','b-inter':'inter','b-cambio-libre':'cl','b-pend':'pend','b-generado':'gen','b-l26':'l26'}[c.clase]||'')}
     if(hoy.getFullYear()===y&&hoy.getMonth()===m&&hoy.getDate()===d)cl+=' hoy';
+    if(opt.click&&notas&&leerDia(notas,y,m,d))cl+=' nota';
     h+='<div class="'+cl+'"'+(opt.click?' data-d="'+d+'" data-m="'+m+'"':'')+'>'+d+'</div>';
   }
   return h+'</div></div>';
@@ -279,6 +284,9 @@ async function iniciarApp(){
   const on=(ref,cb)=>{ref.on('value',cb);offs.push(()=>ref.off('value',cb))};
   on(db.ref('cambios/'+S.miID),s=>{cambios=s.val()||{};if(tab==='cal'||tab==='aj')render()});
   on(db.ref('cambios'),s=>{cambiosTodos=s.val()||{};if(tab==='comp')render()});
+  hist={};notas={};HV=null;
+  on(db.ref('historial2/'+S.miID),s=>{hist=s.val()||{};if(tab==='hist')render()});
+  on(db.ref('notas/'+S.miID),s=>{notas=s.val()||{};if(tab==='cal'||tab==='hist')render()});
   if(S.modoGrupo&&S.grupoActual){
     on(db.ref('grupos/'+S.grupoActual+'/miembros'),s=>{const d=s.val()||{};miembros=(Array.isArray(d)?d.filter(Boolean):Object.values(d));
       const yo=miembros.find(x=>x.id===S.miID);
@@ -322,7 +330,8 @@ async function responderSol(key,so,ok){
   }catch(e){alert('No se pudo completar: '+(e.code||e.message||e))}
 }
 function accionDia(y,m,d,c){
-  if(c==='propio'){iniciarSel('propio',d,m,null)}
+  if(c==='nota'){editarNotaDia(y,m,d)}
+  else if(c==='propio'){iniciarSel('propio',d,m,null)}
   else if(c==='comp'){
     const otros=miembros.filter(x=>x.id!==S.miID);
     modal('<h2>🤝 Cambio con compañero</h2><div class="small">Día que trabajarás: '+d+'/'+(m+1)+'. ¿Con quién?</div>'+otros.map(p=>'<button class="btn" data-cp="'+esc(p.id)+'">'+esc(p.n)+'<small>'+esc(textoPerfil(p))+'</small></button>').join('')+'<button class="btn" style="margin-top:14px" onclick="cerrarModal()">Cancelar</button>');
@@ -363,10 +372,10 @@ function render(){
   if(!S)return;
   $('hsub').textContent=S.miNombreCompleto+' · '+nombreGrupoSub(S.miGrupoSesion,S.miTipoSesion);
   const m=$('main'),y=m.scrollTop,mismo=m.dataset.t===tab;
-  if(tab==='cal')vCal();else if(tab==='comp')vComp();else if(tab==='gru')vGru();else vAj();
+  if(tab==='cal')vCal();else if(tab==='comp')vComp();else if(tab==='hist')vHist();else if(tab==='gru')vGru();else vAj();
   if(mismo&&m.dataset.sc)m.scrollTop=y;m.dataset.t=tab;
 }
-document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));$('main').scrollTop=0;$('main').dataset.t='';$('main').dataset.sc='';render()}));
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));$('main').scrollTop=0;$('main').dataset.t='';$('main').dataset.sc='';HV=null;render()}));
 
 // --- Calendario propio ---
 function vCal(){
@@ -389,7 +398,7 @@ function abrirDia(y,m,d){
   if(c)h+='<span class="pill">'+esc(c.texto||c.clase)+'</span>';
   h+='</div>';
   h+='<button class="btn" data-cam="b-vac">🌴 Vacaciones</button><button class="btn" data-cam="b-cambio-libre">🎁 Libre sin compensación</button><button class="btn" data-cam="b-inter">🟡 Trabajado (en día libre)</button>';
-  h+='<button class="btn" data-cam="propio">🔄 Cambio propio</button>';
+  h+='<button class="btn" data-cam="propio">🔄 Cambio propio</button><button class="btn" data-cam="nota">📝 '+(leerDia(notas,y,m,d)?'Editar nota':'Añadir nota')+'</button>';
   if(S.modoGrupo&&miembros.length>1)h+='<button class="btn" data-cam="comp">🤝 Cambio con compañero</button>';
   if(c)h+='<button class="btn red" data-cam="quitar">🗑️ Quitar marca</button>';
   if(S.modoGrupo&&miembros.length){
@@ -406,12 +415,20 @@ async function marcarDia(y,m,d,clase){
   try{
     if(clase==='quitar'){
       if(prev&&prev.linkedUid){alert('Este día es un cambio con un compañero. Para deshacerlo, hazlo desde la app de Android.');return}
+      if(prev&&prev.histKey&&prev.texto==='Libre sin compensación'){
+        if(hist[prev.histKey]&&hist[prev.histKey].usado){alert('Este día ya se ha usado. Gestiónalo desde la app de Android.');return}
+        await db.ref('historial2/'+S.miID+'/'+prev.histKey).remove();await db.ref('cambios/'+S.miID+'/'+key).remove();cerrarModal();return;
+      }
       if(prev&&prev.histKey){alert('Esta marca está enlazada con el Historial (cambio, pendiente, L-26…). Para quitarla, hazlo desde la app de Android.');return}
       await db.ref('cambios/'+S.miID+'/'+key).remove();
     }else{
       if(prev&&prev.histKey&&!confirm('Este día está enlazado con el Historial de la app de Android. ¿Seguro que quieres sustituir la marca?'))return;
       const txt={'b-vac':'Vacaciones','b-cambio-libre':'Libre sin compensación','b-inter':'Trabajado'}[clase];
-      await db.ref('cambios/'+S.miID+'/'+key).set({clase:clase,texto:txt});
+      if(clase==='b-cambio-libre'){
+        const hr=db.ref('historial2/'+S.miID).push();
+        await hr.set({cat:'libreGracioso',fecha:d+'/'+(m+1)+'/'+y,ts:Date.now(),nota:'Libre sin compensación',usado:false,diaKey:key});
+        await db.ref('cambios/'+S.miID+'/'+key).set({clase:clase,texto:txt,histKey:hr.key});
+      }else await db.ref('cambios/'+S.miID+'/'+key).set({clase:clase,texto:txt});
     }
     cerrarModal();
   }catch(e){alert('No se pudo guardar: '+(e.code||e.message||e))}
@@ -459,6 +476,77 @@ function vAj(){
   $('main').innerHTML=h;
 }
 let EF=null,MF=null;
+function partesKey(k){const a=String(k).split('_').map(Number);return a.length===3?{y:a[0],m:a[1],d:a[2]}:{y:2026,m:a[0],d:a[1]}}
+function ordKey(k){const o=partesKey(k);return o.y*10000+o.m*100+o.d}
+function fechaKey(k){const o=partesKey(k);return o.d+'/'+(o.m+1)+'/'+o.y}
+async function editarNotaDia(y,m,d){
+  const key=claveActual(notas,y,m,d),prev=notas[key];
+  const t=prompt('Nota para el '+d+'/'+(m+1)+'/'+y+' (déjala vacía para borrarla):',prev?prev.texto:'');
+  if(t===null)return;cerrarModal();
+  try{
+    if(!t.trim()){if(prev)await db.ref('notas/'+S.miID+'/'+key).remove()}
+    else{await db.ref('notas/'+S.miID+'/'+claveDia(y,m,d)).set({texto:t.trim(),fecha:d+'/'+(m+1),ts:Date.now()});if(key!==claveDia(y,m,d))await db.ref('notas/'+S.miID+'/'+key).remove()}
+  }catch(e){alert('No se pudo guardar: '+(e.code||e.message||e))}
+}
+async function editarNotaKey(k){
+  const n=notas[k];if(!n)return;const t=prompt('Editar nota ('+n.fecha+'):',n.texto);if(t===null)return;
+  try{if(!t.trim())await db.ref('notas/'+S.miID+'/'+k).remove();else await db.ref('notas/'+S.miID+'/'+k).update({texto:t.trim()})}catch(e){alert('No se pudo guardar: '+(e.code||e.message||e))}
+}
+async function borrarHist(x){
+  const i=x.indexOf('|'),tipo=x.slice(0,i),k=x.slice(i+1);
+  if(!confirm('¿Borrar esto?'))return;
+  try{
+    if(tipo==='vac'||tipo==='prop')await db.ref('cambios/'+S.miID+'/'+k).remove();
+    else if(tipo==='nota')await db.ref('notas/'+S.miID+'/'+k).remove();
+  }catch(e){alert('No se pudo borrar: '+(e.code||e.message||e))}
+}
+const HCATS=[
+ {k:'generados',e:'✨',n:'Generados',s:'Días asignados',c:'#be185d'},
+ {k:'convenio',e:'📋',n:'Convenio',s:'Días convenio',c:'#1d4ed8'},
+ {k:'vacaciones',e:'🌴',n:'Vacaciones',s:'Mis vacaciones',c:'#16a34a'},
+ {k:'pendientes',e:'⏳',n:'Pendientes',s:'Por resolver',c:'#7e22ce'},
+ {k:'cambios',e:'🔄',n:'Cambios',s:'Permutas',c:'#2563eb'},
+ {k:'notas',e:'📝',n:'Notas',s:'Anotaciones',c:'#0e7490'},
+ {k:'graciosos',e:'🎁',n:'Sin comp.',s:'Sin cobrar',c:'#0891b2'},
+ {k:'l26',e:'🟡',n:'L-26',s:'Días L-26',c:'#b45309'}];
+function hLista(){
+  const H=Object.entries(hist||{}).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0));
+  const f=fn=>H.filter(([,x])=>fn(x));
+  return {generados:f(x=>x.cat==='generado'&&x.subtipo!=='convenio'),convenio:f(x=>x.cat==='generado'&&x.subtipo==='convenio'),pendientes:f(x=>x.cat==='pendiente'),graciosos:f(x=>x.cat==='libreGracioso'),l26:f(x=>x.cat==='l26'),comp:f(x=>x.cat==='comp'),
+    vacaciones:Object.entries(cambios).filter(([,c])=>c&&c.clase==='b-vac').sort((a,b)=>ordKey(a[0])-ordKey(b[0])),
+    propios:Object.entries(cambios).filter(([,c])=>c&&!c.linkedUid&&!c.histKey&&/\(x \d+\/\d+\)/.test(c.texto||'')).sort((a,b)=>ordKey(a[0])-ordKey(b[0])),
+    notas:Object.entries(notas||{}).sort((a,b)=>(b[1].ts||0)-(a[1].ts||0))};
+}
+function itemHist(k,x,col){
+  let d='';
+  if(x.usado)d='<div>✔️ '+(x.accion==='cobrado'?'Cobrado':'Librado')+(x.diaAsignado?' · 📅 '+fechaKey(x.diaAsignado):'')+'</div>';
+  return '<div class="fila" style="border-left:5px solid '+col+(x.usado?';opacity:.6':'')+'"><div class="t"><b>'+esc(x.fecha||'—')+'</b><div>'+esc(x.nota||'')+'</div>'+d+'</div></div>';
+}
+function vHist(){
+  const L=hLista(),sinUsar=a=>a.filter(([,x])=>!x.usado).length;
+  if(!HV){
+    const cnt={generados:sinUsar(L.generados),convenio:sinUsar(L.convenio),vacaciones:L.vacaciones.length,pendientes:sinUsar(L.pendientes),cambios:L.comp.length+L.propios.length,notas:L.notas.length,graciosos:L.graciosos.length,l26:sinUsar(L.l26)};
+    let h='<div class="sec">Tu historial</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+HCATS.map(c=>'<button class="tile" style="background:'+c.c+';margin:0" data-hv="'+c.k+'"><div class="circ">'+c.e+'</div><div><b>'+c.n+(cnt[c.k]?' ('+cnt[c.k]+')':'')+'</b><small>'+c.s+'</small></div></button>').join('')+'</div>';
+    h+='<div class="card small" style="margin-top:14px">Aquí puedes consultarlo todo. Para usar, editar o borrar los días generados, de convenio, pendientes y L-26, usa la app de Android.</div>';
+    $('main').innerHTML=h;return;
+  }
+  const c=HCATS.find(x=>x.k===HV);
+  let h='<button class="btn" style="margin-top:0" data-hv="">← Atrás</button><div class="sec">'+c.e+' '+c.n+'</div>';
+  const vacio=t=>'<div class="card small">'+t+'</div>';
+  if(HV==='generados'||HV==='convenio'||HV==='pendientes'||HV==='l26'||HV==='graciosos'){
+    const arr=L[HV];h+=arr.length?arr.map(([k,x])=>itemHist(k,x,c.c)).join(''):vacio('No hay nada todavía');
+  }else if(HV==='vacaciones'){
+    h+=L.vacaciones.length?L.vacaciones.map(([k,x])=>'<div class="fila" style="border-left:5px solid '+c.c+'"><div class="t"><b>'+fechaKey(k)+'</b><div>'+esc(x.texto||'Vacaciones')+'</div></div><button class="chip" data-hd="vac|'+esc(k)+'">🗑️</button></div>').join(''):vacio('No hay vacaciones marcadas');
+  }else if(HV==='cambios'){
+    h+=L.comp.length+L.propios.length?'':vacio('No hay cambios realizados');
+    h+=L.comp.map(([k,x])=>'<div class="fila" style="border-left:5px solid '+c.c+'"><div class="t"><b>🤝 '+esc(x.con||'Compañero')+'</b><div>🚌 Trabajas '+esc(x.diaTrabaja||'—')+' · 🏠 Libras '+esc(x.diaLibra||'—')+'</div>'+(x.nota?'<div>📝 '+esc(x.nota)+'</div>':'')+'</div></div>').join('');
+    h+=L.propios.map(([k,x])=>'<div class="fila" style="border-left:5px solid '+c.c+'"><div class="t"><b>'+fechaKey(k)+'</b><div>'+esc(x.texto||'')+' · '+(x.clase==='b-inter'?'Trabajas':'Libras')+'</div></div><button class="chip" data-hd="prop|'+esc(k)+'">🗑️</button></div>').join('');
+    if(L.comp.length)h+='<div class="card small">Para deshacer un cambio con un compañero, hazlo desde la app de Android.</div>';
+  }else if(HV==='notas'){
+    h+=L.notas.length?L.notas.map(([k,x])=>'<div class="fila" style="border-left:5px solid '+c.c+'"><div class="t" data-hn="'+esc(k)+'"><b>'+esc(x.fecha||fechaKey(k))+'</b><div>'+esc(x.texto||'')+'</div></div><button class="chip" data-hd="nota|'+esc(k)+'">🗑️</button></div>').join('')+'<div class="small">Toca una nota para editarla.</div>':vacio('No hay notas guardadas. Añade una tocando un día del calendario.');
+  }
+  $('main').innerHTML=h;
+}
 async function editarGrupo(){
   let creador=null;try{creador=(await db.ref('grupos/'+S.grupoActual+'/creador').once('value')).val()}catch(e){}
   const lista=miembros.slice().sort((a,b)=>String(a.n).localeCompare(String(b.n)));
@@ -532,6 +620,9 @@ async function guardarPerfil(){
 document.addEventListener('click',e=>{
   if(!S)return;
   if(e.target.closest('[data-cancelsel]')){SEL=null;render();return}
+  const hv=e.target.closest('[data-hv]');if(hv){HV=hv.dataset.hv||null;$('main').scrollTop=0;render();return}
+  const hd=e.target.closest('[data-hd]');if(hd){borrarHist(hd.dataset.hd);return}
+  const hn=e.target.closest('[data-hn]');if(hn){editarNotaKey(hn.dataset.hn);return}
   const a=e.target.closest('[data-anio]');
   if(a){const n=anio+(+a.dataset.anio);if(n>=Math.min(...ANIOS)&&n<=Math.max(...ANIOS)){anio=n;if(!$('modal').classList.contains('hide'))verCompanero(window._vc);else render()}return}
   const c=e.target.closest('.c[data-d]');if(c&&tab==='cal'){if(SEL)confirmarSel(+c.dataset.d,+c.dataset.m);else abrirDia(anio,+c.dataset.m,+c.dataset.d);return}
