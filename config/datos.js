@@ -64,6 +64,9 @@ export const FESTIVOS = {
     ]
 };
 
+// Los festivos 2026 de conductores salen del PDF oficial (libresConductores.js).
+FESTIVOS[2026] = FESTIVOS_CONDUCTORES[2026];
+
 // Para compatibilidad con código existente que usa FESTIVOS_2026
 export const FESTIVOS_2026 = FESTIVOS[2026];
 
