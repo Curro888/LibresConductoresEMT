@@ -740,6 +740,7 @@ function vAj(){
   let h='<div class="card"><b>'+esc(S.miNombreCompleto)+'</b><div class="small">Nº empleado '+esc(S.miID)+'</div><div style="margin-top:8px">'+esc(textoPerfil(S.miPerfil||{g:S.miGrupoSesion,t:S.miTipoSesion}))+'</div><button class="btn fill" data-aj="perfil">✏️ Editar mi perfil</button><div class="small" style="margin-top:6px">Si te cambian de grupo de libres, cámbialo aquí: el calendario se actualiza desde el 1 de enero.</div></div>';
   if(esCT())h+='<div class="card"><b>🔁 Correturnos</b><div class="small" style="margin-top:6px">Grupo abierto. Si cambias tu perfil a línea fija, saldrás de la lista y los que van detrás subirán un puesto.</div></div>';
   else if(S.modoGrupo)h+='<div class="card"><b>👥 Grupo</b><div class="small" style="word-break:break-all">Código: '+esc(S.grupoActual)+'</div><button class="btn fill" data-aj="grupo">✏️ Editar grupo</button><div class="small" style="margin-top:6px">Añade a compañeros que no usan la app o corrige sus datos.</div></div>';
+  h+='<div class="card"><div style="font-weight:800">💾 Copia de seguridad</div><div class="small" style="margin:4px 0 8px">Guarda tus cambios, historial y notas donde quieras, y restáuralos cuando lo necesites.</div><button class="btn" data-aj="copia" style="margin-top:0">Guardar copia</button><button class="btn" data-aj="restaurar" style="background:#64748b">Restaurar</button></div>';
   h+='<div class="card"><button class="btn" data-aj="dark" style="margin-top:0">'+(document.body.classList.contains('dark')?'☀️ Modo claro':'🌙 Modo oscuro')+'</button><button class="btn red" data-aj="salir">🚪 Cerrar sesión</button></div>';
   h+='<div class="card small" style="text-align:center">Libres Conductores EMT · versión web para iPhone</div>';
   $('main').innerHTML=h;
@@ -941,10 +942,58 @@ document.addEventListener('click',e=>{
   const aj=e.target.closest('[data-aj]');if(aj){
     if(aj.dataset.aj==='perfil')editarPerfil();
     else if(aj.dataset.aj==='grupo')editarGrupo();
+    else if(aj.dataset.aj==='copia')guardarCopia();
+    else if(aj.dataset.aj==='restaurar')pedirCopia();
+    else if(aj.dataset.aj==='copiano')cerrarModal();
+    else if(aj.dataset.aj==='copiaok')restaurarCopia();
     else if(aj.dataset.aj==='dark'){document.body.classList.toggle('dark');LS.set('darkLC',document.body.classList.contains('dark')?1:0);vAj()}
     else if(aj.dataset.aj==='salir'&&confirm('¿Cerrar sesión en este iPhone?')){limpiar();LS.del('sesionLC');S=null;LF={modo:null,P:null,sis:'C'};pantallaLogin()}
   }
 });
+
+// ===== COPIA DE SEGURIDAD =====
+// Mismo formato que en la app del móvil: se puede guardar en uno y restaurar en el otro.
+async function guardarCopia(){
+  try{
+    const id=String(S.miID);
+    const [c,h,n]=await Promise.all([db.ref('cambios/'+id).once('value'),db.ref('historial2/'+id).once('value'),db.ref('notas/'+id).once('value')]);
+    const txt='LIBRESEMT-COPIA\n'+JSON.stringify({v:1,id:id,fecha:new Date().toISOString(),cambios:c.val()||{},historial:h.val()||{},notas:n.val()||{}});
+    const nombre='Copia de seguridad Libres EMT.txt';
+    if(navigator.share){
+      try{
+        const fl=new File([txt],nombre,{type:'text/plain'});
+        if(navigator.canShare&&navigator.canShare({files:[fl]})){await navigator.share({files:[fl],title:nombre});return}
+        await navigator.share({title:nombre,text:txt});return;
+      }catch(e){if(e&&e.name==='AbortError')return}
+    }
+    const u=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));
+    const a=document.createElement('a');a.href=u;a.download=nombre;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),2000);
+  }catch(e){alert('No se ha podido guardar la copia. Comprueba la conexión e inténtalo de nuevo.')}
+}
+function pedirCopia(){
+  modal('<h2>Restaurar copia</h2><div class="small">Pega aquí el mensaje completo de tu copia (empieza por LIBRESEMT-COPIA).</div><textarea id="cp-t" style="width:100%;min-height:120px;margin-top:8px;padding:8px;border-radius:8px;border:1px solid #cbd5e1;box-sizing:border-box" placeholder="Pega aquí la copia"></textarea><button class="btn" data-aj="copiaok">Restaurar</button><button class="btn" data-aj="copiano" style="background:#64748b">Cancelar</button>');
+}
+async function restaurarCopia(){
+  try{
+    const bruto=String(($('cp-t')||{}).value||'');
+    if(bruto.length>3000000){alert('El texto es demasiado grande para ser una copia válida.');return}
+    const i=bruto.indexOf('{'),j=bruto.lastIndexOf('}');
+    if(i<0||j<=i){alert('No encuentro una copia en ese texto. Pega el mensaje completo que guardaste.');return}
+    let cp;try{cp=JSON.parse(bruto.slice(i,j+1))}catch(e){alert('El texto está incompleto o cortado. Pega la copia entera.');return}
+    const ok=x=>x==null||(typeof x==='object'&&!Array.isArray(x));
+    if(!cp||cp.v!==1||!cp.id||!ok(cp.cambios)||!ok(cp.historial)||!ok(cp.notas)){alert('Ese texto no es una copia válida de esta app.');return}
+    const id=String(S.miID);
+    if(String(cp.id)!==id){alert('Esta copia es del empleado '+cp.id+' y tú has entrado como '+id+'. No se puede restaurar.');return}
+    const nc=Object.keys(cp.cambios||{}).length,nh=Object.keys(cp.historial||{}).length,nn=Object.keys(cp.notas||{}).length;
+    const cuando=cp.fecha?new Date(cp.fecha).toLocaleDateString('es-ES'):'';
+    if(!confirm('Copia del '+cuando+': '+nc+' cambios, '+nh+' registros de historial y '+nn+' notas.\n\nSustituirá lo que tienes ahora. ¿Continuar?'))return;
+    const up={};
+    up['cambios/'+id]=nc?cp.cambios:null;up['historial2/'+id]=nh?cp.historial:null;up['notas/'+id]=nn?cp.notas:null;
+    await db.ref().update(up);
+    cerrarModal();alert('Copia restaurada correctamente.');
+  }catch(e){alert('No se ha podido restaurar. Inténtalo de nuevo con conexión.')}
+}
 
 // ===== BOTÓN ATRÁS DEL MÓVIL =====
 function volverAtras(){
