@@ -13,7 +13,7 @@ import { nombreGrupoSub } from '../config/libresConductores';
 import { anioInicial, equipoBase, mesesArr, getDiasLibres, getDiasEspeciales, esFestivo, getGruposLibres, MAX_LIBRES_VAC, claveDia, leerDia, partesDia, claveDiaActual, esDiaLibre } from '../config/datos';
 import { useTheme } from '../context/ThemeContext';
 import { useNetworkStatus } from '../hooks/useNetworkStatus'; // añadido: aviso de sin conexión
-import { enviarPushA } from '../services/notifications';
+import { enviarPushA, programarRecordatorioSolicitudes } from '../services/notifications';
 
 const { width: SW } = Dimensions.get('window');
 const PANEL_W = SW * 0.75;
@@ -97,6 +97,7 @@ export default function CalendarioScreen({ navigation, route }) {
                 if (s.modoGrupo) {
                     unsubSolicitudes = onValue(ref(db, 'solicitudes'), snap => {
                         const todas = snap.val() || {};
+                        programarRecordatorioSolicitudes(Object.values(todas).filter(x => x && String(x.para) === String(s.miID) && x.estado === 'pendiente').length);
                         Object.entries(todas).forEach(([key, sol]) => {
                             if (String(sol.para) === String(s.miID) && sol.estado === 'pendiente' && !solicitudesVistas.current.has(key)) {
                                 solicitudesVistas.current.add(key);

@@ -81,3 +81,44 @@ export async function enviarPushA(userId, titulo, cuerpo, data = {}) {
     console.log('Error enviando notificación push:', e?.message || e);
   }
 }
+
+// Recordatorio local de peticiones de cambio sin contestar.
+// Si hay peticiones pendientes, programa UN aviso para las 18:00 (hoy, o mañana si ya pasó).
+// Si no hay ninguna, cancela el aviso. Se recalcula cada vez que se abre la app.
+// No usa internet ni el proyecto push: es un aviso del propio móvil.
+const ID_RECORDATORIO_SOL = 'recordatorio-solicitudes';
+export async function programarRecordatorioSolicitudes(pendientes) {
+  try {
+    if (Platform.OS === 'web') return;
+    await Notifications.cancelScheduledNotificationAsync(ID_RECORDATORIO_SOL).catch(() => {});
+    if (!pendientes || pendientes < 1) return;
+    let { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') {
+      const r = await Notifications.requestPermissionsAsync();
+      status = r.status;
+    }
+    if (status !== 'granted') return;
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+      });
+    }
+    const cuando = new Date();
+    cuando.setHours(18, 0, 0, 0);
+    if (cuando.getTime() <= Date.now() + 60 * 1000) cuando.setDate(cuando.getDate() + 1);
+    await Notifications.scheduleNotificationAsync({
+      identifier: ID_RECORDATORIO_SOL,
+      content: {
+        title: '🤝 Petición de cambio pendiente',
+        body: pendientes === 1
+          ? 'Tienes 1 petición de cambio sin contestar.'
+          : 'Tienes ' + pendientes + ' peticiones de cambio sin contestar.',
+        sound: 'default',
+      },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: cuando },
+    });
+  } catch (e) {
+    console.log('Recordatorio de peticiones:', e?.message || e);
+  }
+}

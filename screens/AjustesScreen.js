@@ -8,6 +8,7 @@ import { ref, onValue, update, get } from 'firebase/database';
 import { equipoBase, mesesArr, getDiasLibres, esFestivo } from '../config/datos';
 import PerfilConductorForm, { PERFIL_VACIO, escalafonValido, validarPerfil, perfilAMiembro, textoPerfil } from '../components/PerfilConductorForm';
 import { useTheme } from '../context/ThemeContext';
+import CopiaSeguridad from '../components/CopiaSeguridad';
 import { APP_VERSION } from '../config/version';
 
 const HORAS_POR_DIA = 7.5; // Ajustar si el convenio cambia
@@ -372,6 +373,8 @@ export default function AjustesScreen({ navigation }) {
                         </View>
                     </TouchableOpacity>
                 )}
+
+                <CopiaSeguridad />
 
                 <TouchableOpacity style={s.btn} onPress={cerrarSesion}>
                     <Text style={s.btnTexto}>🚪 Cerrar sesión</Text>
