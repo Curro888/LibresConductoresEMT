@@ -135,7 +135,8 @@ function subgruposDe(g){return sistemaDe(g)==='R'?SUB_RSN:SUBS}
 function nombreGrupo(g){g=String(g||'');const s=sistemaDe(g);return s==='B'?'Búhos '+g.slice(1):s==='R'?'R.S.N '+g.slice(1):'Grupo '+g}
 function nombreGrupoSub(g,t){g=String(g||'');return sistemaDe(g)==='R'?'R.S.N '+g.slice(1)+(t||''):nombreGrupo(g)+(t?' · '+t:'')}
 function etiquetaGrupo(g,t){g=String(g||'');const s=sistemaDe(g);return s==='B'?'Bú'+g.slice(1)+'·'+t:s==='R'?'RSN '+g.slice(1)+t:'G'+g+'·'+t}
-function textoPerfil(m){if(!m)return'';const p=[etiquetaGrupo(m.g,m.t)];if(m.c)p.push('Correturnos');else{if(m.l)p.push('Línea '+m.l);if(m.tu)p.push('Turno '+m.tu)}if(m.e)p.push('Esc. '+m.e);return p.join(' · ')}
+function detallePerfil(m){const p=[];if(!m)return'';if(m.c)p.push('Correturnos');else{if(m.l)p.push('Línea '+m.l);if(m.cl)p.push('Corre. Línea '+(m.cl==='M'?'mañana':'tarde')+(m.tu?' '+m.tu:''));else if(m.tu)p.push('Turno '+m.tu)}if(m.e)p.push('Esc. '+m.e);return p.join(' · ')}
+function textoPerfil(m){if(!m)return'';const d=detallePerfil(m);return etiquetaGrupo(m.g,m.t)+(d?' · '+d:'')}
 function getLibres(y,g,t){const po=POR_ANIO[y];if(!po)return VACIO;const s=sistemaDe(g);const tb=po[s];if(!tb)return VACIO;t=String(t||'').toUpperCase();return tb[(s==='C'?String(g):String(g).slice(1))+t]||VACIO}
 function anioInicial(){const h=new Date().getFullYear();if(ANIOS.includes(h))return h;const f=ANIOS.filter(a=>a>h);return f.length?Math.min(...f):Math.max(...ANIOS)}
 function esFestivo(y,m,d){const f=FESTIVOS[y]||[];const k=d+'/'+(m+1);return f.find(x=>x.fecha===k)||null}
@@ -220,7 +221,8 @@ function pintaForm(cont,F){
   const ctLogin=F.modo==='ct',ctObl=ctLogin||(F===EF&&esCT()&&P.c);
   if(!ctLogin)h+='<label>¿Tienes línea asignada?</label><div class="chips"><button class="chip'+(!P.c?' on':'')+'" data-fc="0">Sí, línea fija</button><button class="chip'+(P.c?' on':'')+'" data-fc="1">Correturnos</button></div>';
   if(F===EF&&esCT()&&!P.c)h+='<div class="card small">Al guardar con línea fija saldrás de la lista de Correturnos y los que van detrás subirán un puesto.</div>';
-  if(!P.c)h+='<label>Línea (opcional)</label><input type="text" id="pf-l" placeholder="Ej: 402 (la E2) o N5 (búho)" autocapitalize="characters" value="'+esc(P.l||'')+'"><label>Turno (opcional)</label><input type="tel" id="pf-tu" placeholder="Ej: 5" value="'+esc(P.tu||'')+'">';
+  if(!P.c)h+='<label>Línea (opcional)</label><input type="text" id="pf-l" placeholder="Ej: 402 (la E2) o N5 (búho)" autocapitalize="characters" value="'+esc(P.l||'')+'"><label>Turno (opcional) · si eres correturnos de línea, escribe tu número y marca M o T</label><div style="display:flex;gap:8px"><input type="tel" id="pf-tu" placeholder="Ej: 5 o 023" style="flex:1" value="'+esc(P.tu||'')+'"><button class="chip'+(P.cl?' on':'')+'" data-fcl="menu" style="white-space:nowrap">Corre. Línea'+(P.cl?' '+P.cl:'')+' ▾</button></div>';
+  if(!P.c&&F.abreCL)h+='<div style="display:flex;gap:8px;margin-top:8px;padding:10px;border:1px solid #ddd6fe;border-radius:12px"><button class="chip'+(P.cl==='M'?' on':'')+'" data-fcl="M" style="flex:1;text-align:center"><b style="font-size:1.2em">M</b><br>Mañana</button><div style="width:1px;background:#ddd6fe"></div><button class="chip'+(P.cl==='T'?' on':'')+'" data-fcl="T" style="flex:1;text-align:center"><b style="font-size:1.2em">T</b><br>Tarde</button></div>';
   h+='<label>'+(P.c?'Escalafón en la empresa':'Escalafón en la línea')+(ctObl?' (obligatorio)':' (opcional)')+'</label><input type="tel" id="pf-e" placeholder="Ej: 25 (puedes cambiarlo cuando quieras)" value="'+esc(P.e||'')+'">';
   cont.innerHTML=h;
   const bind=(id,k,f)=>{const el=cont.querySelector('#'+id);if(el)el.addEventListener('input',()=>{el.value=f(el.value);P[k]=el.value})};
@@ -230,12 +232,13 @@ function pintaForm(cont,F){
     if(b.dataset.fs){if(b.dataset.fs!==sis){F.sis=b.dataset.fs;P.g='';P.t=''}}
     else if(b.dataset.fg){P.g=b.dataset.fg;if(!subgruposDe(P.g).includes(P.t))P.t=''}
     else if(b.dataset.ft)P.t=b.dataset.ft;
-    else if(b.dataset.fc){P.c=b.dataset.fc==='1';if(P.c){P.l='';P.tu=''}}
+    else if(b.dataset.fc){P.c=b.dataset.fc==='1';if(P.c){P.l='';P.tu='';P.cl=''}}
+    else if(b.dataset.fcl){const v=b.dataset.fcl;if(v==='menu')F.abreCL=!F.abreCL;else{P.cl=P.cl===v?'':v;F.abreCL=false}}
     else return;
     pintaForm(cont,F);
   };
 }
-function perfilAMiembro(P){const m={g:String(P.g),t:String(P.t),c:!!P.c};if(!P.c){if(String(P.l||'').trim())m.l=String(P.l).trim();if(String(P.tu||'').trim())m.tu=String(P.tu).trim()}if(String(P.e||'').trim())m.e=String(P.e).trim();return m}
+function perfilAMiembro(P){const m={g:String(P.g),t:String(P.t),c:!!P.c};if(!P.c){if(String(P.l||'').trim())m.l=String(P.l).trim();if(/^[MT]$/.test(String(P.cl||'')))m.cl=String(P.cl);if(String(P.tu||'').trim())m.tu=String(P.tu).trim()}if(String(P.e||'').trim())m.e=String(P.e).trim();return m}
 function validaPerfil(P){return(!P.g||!P.t)?'Elige tu grupo y tu subgrupo':null}
 function guardarGrupoEnLista(x){const l=LS.get('gruposGuardadosLC')||[];const i=l.findIndex(a=>a.codigo===x.codigo&&a.id===x.id);if(i>=0)l[i]=x;else l.push(x);LS.set('gruposGuardadosLC',l)}
 
@@ -282,7 +285,7 @@ async function entrarGuardado(i){
   try{
     const mm=(await db.ref('grupos/'+x.codigo+'/miembros/'+x.id).once('value')).val();
     if(!mm)return alert('Ya no estás en ese grupo (o el grupo no existe).');
-    const m={g:mm.g,t:mm.t,c:!!mm.c};if(mm.l)m.l=mm.l;if(mm.tu)m.tu=mm.tu;if(mm.e)m.e=mm.e;
+    const m={g:mm.g,t:mm.t,c:!!mm.c};if(mm.l)m.l=mm.l;if(mm.tu)m.tu=mm.tu;if(mm.cl)m.cl=mm.cl;if(mm.e)m.e=mm.e;
     S={miID:x.id,miNombreCompleto:mm.n||x.nombre,modoGrupo:true,grupoActual:x.codigo,miGrupoSesion:m.g,miTipoSesion:m.t,miPerfil:m};
     guardarSesion();iniciarApp();
   }catch(e){alert('No se pudo entrar: '+(e.code||e.message||e))}
@@ -312,7 +315,7 @@ async function iniciarApp(){
   if(S.modoGrupo&&S.grupoActual){
     on(db.ref('grupos/'+S.grupoActual+'/miembros'),s=>{const d=s.val()||{};miembros=(Array.isArray(d)?d.filter(Boolean):Object.values(d));
       const yo=miembros.find(x=>x.id===S.miID);
-      if(yo&&(yo.g!==S.miGrupoSesion||yo.t!==S.miTipoSesion)){const m={g:yo.g,t:yo.t,c:!!yo.c};if(yo.l)m.l=yo.l;if(yo.tu)m.tu=yo.tu;if(yo.e)m.e=yo.e;S.miGrupoSesion=m.g;S.miTipoSesion=m.t;S.miPerfil=m;guardarSesion()}
+      if(yo&&(yo.g!==S.miGrupoSesion||yo.t!==S.miTipoSesion)){const m={g:yo.g,t:yo.t,c:!!yo.c};if(yo.l)m.l=yo.l;if(yo.tu)m.tu=yo.tu;if(yo.cl)m.cl=yo.cl;if(yo.e)m.e=yo.e;S.miGrupoSesion=m.g;S.miTipoSesion=m.t;S.miPerfil=m;guardarSesion()}
       if(tab==='comp'||tab==='cal')render()});
     const hb=()=>db.ref('presencia/'+S.grupoActual+'/'+S.miID).set({ts:Date.now()}).catch(()=>{});hb();hbTimer=setInterval(hb,60000);
   }
@@ -400,7 +403,7 @@ function render(){
   if(!S)return;
   if(tab!=='cal'||SEL||MG)cerrarPanelDia();
   const pcs=SEL&&SEL.tipo==='comp'&&tab==='cal'?miembros.find(x=>x.id===SEL.comp):null;
-  $('hsub').textContent=pcs?'📅 Calendario de '+pcs.n+' · '+textoPerfil(pcs):S.miNombreCompleto+' · '+nombreGrupoSub(S.miGrupoSesion,S.miTipoSesion);
+  if(pcs)$('hsub').textContent='📅 Calendario de '+pcs.n+' · '+textoPerfil(pcs);else{const dp=detallePerfil(S.miPerfil);$('hsub').innerHTML=esc(S.miNombreCompleto+' · '+nombreGrupoSub(S.miGrupoSesion,S.miTipoSesion))+(dp?'<br>'+esc(dp):'')}
   const m=$('main'),y=m.scrollTop,mismo=m.dataset.t===tab;
   if(tab==='cal')vCal();else if(tab==='comp')vComp();else if(tab==='hist')vHist();else if(tab==='gru')vGru();else vAj();
   if(mismo&&m.dataset.sc)m.scrollTop=y;m.dataset.t=tab;
@@ -852,7 +855,7 @@ async function editarGrupo(){
 }
 function formMiembro(id){
   const p=id===null?{}:(miembros.find(x=>x.id===id)||{});
-  MF={orig:id,P:{g:p.g||'',t:p.t||'',c:!!p.c,l:p.l||'',tu:p.tu||'',e:p.e||''},sis:'C'};
+  MF={orig:id,P:{g:p.g||'',t:p.t||'',c:!!p.c,l:p.l||'',tu:p.tu||'',cl:p.cl||'',e:p.e||''},sis:'C'};
   modal('<h2>'+(id===null?'Añadir persona':'Editar persona')+'</h2><label>Nombre</label><input type="text" id="me-n" value="'+esc(p.n||'')+'"><label>Número de empleado</label><input type="tel" id="me-id" value="'+esc(p.id||'')+'"><div id="pf3"></div><button class="btn fill" id="me-ok">Guardar</button><button class="btn" id="me-cancel">Cancelar</button>');
   pintaForm($('pf3'),MF);
   $('modalc').onclick=null;
@@ -890,7 +893,7 @@ async function eliminarGrupo(){
   }catch(e){alert('No se pudo borrar el grupo: '+(e.code||e.message||e))}
 }
 function editarPerfil(){
-  const p=S.miPerfil||{};EF={P:{g:p.g||S.miGrupoSesion,t:p.t||S.miTipoSesion,c:!!p.c,l:p.l||'',tu:p.tu||'',e:p.e||''},sis:'C'};
+  const p=S.miPerfil||{};EF={P:{g:p.g||S.miGrupoSesion,t:p.t||S.miTipoSesion,c:!!p.c,l:p.l||'',tu:p.tu||'',cl:p.cl||'',e:p.e||''},sis:'C'};
   modal('<h2>Mi perfil</h2><div id="pf2"></div><button class="btn fill" id="pf-ok">Guardar</button><button class="btn" onclick="cerrarModal()">Cancelar</button>');
   pintaForm($('pf2'),EF);
   $('pf-ok').onclick=guardarPerfil;
