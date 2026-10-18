@@ -1141,6 +1141,18 @@ export default function CalendarioScreen({ navigation, route }) {
             <View style={s.header}>
                 <Text style={s.titulo}>📅 Turnos</Text>
                 <Text style={s.sub}>{sesion.miNombreCompleto} · {nombreGrupoSub(grupo, sesion.miTipoSesion)}</Text>
+                {(() => {
+                    const mp = sesion.miPerfil || {};
+                    const partes = [];
+                    if (mp.c) partes.push('Correturnos');
+                    else {
+                        if (mp.l) partes.push('Línea ' + mp.l);
+                        if (mp.cl) partes.push('Corre. Línea ' + (mp.cl === 'M' ? 'mañana' : 'tarde') + (mp.tu ? ' ' + mp.tu : ''));
+                        else if (mp.tu) partes.push('Turno ' + mp.tu);
+                    }
+                    if (mp.e) partes.push('Esc. ' + mp.e);
+                    return partes.length ? <Text style={s.sub}>{partes.join(' · ')}</Text> : null;
+                })()}
                 <View style={s.anioNav}>
                     <TouchableOpacity onPress={() => { setAnio(anio - 1); scrollRef.current?.scrollToOffset({ offset: 0, animated: false }); }} style={s.anioBtn}>
                         <Text style={s.anioBtnTexto}>◀</Text>
