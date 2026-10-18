@@ -36,7 +36,7 @@ export default function AjustesScreen({ navigation }) {
                 setEditPerfil({
                     g: String(mp.g || s.miGrupoSesion || ''),
                     t: mp.t || s.miTipoSesion || '',
-                    c: !!mp.c, l: mp.l || '', tu: mp.tu || '', e: mp.e || ''
+                    c: !!mp.c, l: mp.l || '', tu: mp.tu || '', cl: mp.cl || '', e: mp.e || ''
                 });
                 const foto = await AsyncStorage.getItem('fotoPerfil');
                 if (foto) setFotoPerfil(foto);
@@ -115,7 +115,7 @@ export default function AjustesScreen({ navigation }) {
                     n: editNombre.trim(),
                     id: sesion.miID,
                     g: m.g, t: m.t, c: m.c,
-                    l: m.l ?? null, tu: m.tu ?? null, e: m.e ?? null
+                    l: m.l ?? null, tu: m.tu ?? null, cl: m.cl ?? null, e: m.e ?? null
                 });
                 // Mantener también el acceso rápido guardado en el móvil
                 const raw = await AsyncStorage.getItem('misGrupos2026');

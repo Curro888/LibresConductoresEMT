@@ -328,7 +328,7 @@ export default function GruposScreen({ navigation }) {
                                 </View>
                                 {!esCT && <TouchableOpacity style={sc.btnEditar} onPress={() => {
                                     setEditNombre(p.n); setEditID(p.id);
-                                    setEditPerfil({ g: String(p.g || ''), t: p.t || '', c: !!p.c, l: p.l || '', tu: p.tu || '', e: p.e || '' });
+                                    setEditPerfil({ g: String(p.g || ''), t: p.t || '', c: !!p.c, l: p.l || '', tu: p.tu || '', cl: p.cl || '', e: p.e || '' });
                                     setModalEditar({ idx });
                                 }}>
                                     <Text style={sc.btnEditarTexto}>✏️</Text>

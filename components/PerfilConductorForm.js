@@ -8,8 +8,10 @@ import { SISTEMAS_CONDUCTORES, sistemaDe, subgruposDe, etiquetaGrupo } from '../
 //   c  = true si es correturnos (sin línea ni turno fijos)
 //   l  = línea (número interno, ej. '402' para la E2)  — solo si c es false
 //   tu = turno (número)                                  — solo si c es false
+//   cl = correturnos de línea (M1..M10 / T1..T10), alternativa al turno
 //   e  = escalafón (en la línea si tiene línea; en la empresa si es correturnos)
-export const PERFIL_VACIO = { g: '', t: '', c: false, l: '', tu: '', e: '' };
+export const PERFIL_VACIO = { g: '', t: '', c: false, l: '', tu: '', cl: '', e: '' };
+// cl = correturnos de línea: 'M1'..'M10' (mañana) o 'T1'..'T10' (tarde). Sustituye al turno fijo.
 export const PERFIL_CORRETURNOS = { g: '', t: '', c: true, l: '', tu: '', e: '' };
 // Código fijo del grupo abierto de correturnos (el mismo que usa la versión web).
 export const CODIGO_CORRETURNOS = 'CT';
@@ -26,7 +28,8 @@ export function perfilAMiembro(p) {
     const m = { g: String(p.g), t: String(p.t), c: !!p.c };
     if (!p.c) {
         if (String(p.l || '').trim()) m.l = String(p.l).trim();
-        if (String(p.tu || '').trim()) m.tu = String(p.tu).trim();
+        if (/^[MT](10|[1-9])$/.test(String(p.cl || ''))) m.cl = String(p.cl);
+        else if (String(p.tu || '').trim()) m.tu = String(p.tu).trim();
     }
     if (String(p.e || '').trim()) m.e = String(p.e).trim();
     return m;
@@ -39,7 +42,8 @@ export function textoPerfil(m) {
     if (m.c) partes.push('Correturnos');
     else {
         if (m.l) partes.push('Línea ' + m.l);
-        if (m.tu) partes.push('Turno ' + m.tu);
+        if (m.cl) partes.push('Corre. Línea ' + m.cl);
+        else if (m.tu) partes.push('Turno ' + m.tu);
     }
     if (m.e) partes.push('Esc. ' + m.e);
     return partes.join(' · ');
@@ -61,6 +65,7 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
         const b = Keyboard.addListener('keyboardDidHide', () => setTecladoAlto(0));
         return () => { a.remove(); b.remove(); };
     }, []);
+    const [abreCL, setAbreCL] = useState(false);
     const [sisElegido, setSisElegido] = useState(sistemaDe(v.g));
     const sis = v.g ? sistemaDe(v.g) : sisElegido;
     const sistema = SISTEMAS_CONDUCTORES.find(x => x.id === sis) || SISTEMAS_CONDUCTORES[0];
@@ -112,7 +117,7 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
                 <TouchableOpacity style={[s.btnAncho, !v.c && s.btnActivo]} onPress={() => { Keyboard.dismiss(); set('c', false); }}>
                     <Text style={[s.btnTexto, !v.c && s.btnTextoActivo]}>Sí, línea fija</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[s.btnAncho, v.c && s.btnActivo]} onPress={() => { Keyboard.dismiss(); onChange({ ...v, c: true, l: '', tu: '' }); }}>
+                <TouchableOpacity style={[s.btnAncho, v.c && s.btnActivo]} onPress={() => { Keyboard.dismiss(); onChange({ ...v, c: true, l: '', tu: '', cl: '' }); }}>
                     <Text style={[s.btnTexto, v.c && s.btnTextoActivo]}>Correturnos</Text>
                 </TouchableOpacity>
             </View>}
@@ -121,8 +126,36 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
                 <View>
                     <Text style={s.label}>Línea (opcional)</Text>
                     <TextInput style={s.input} placeholder="Ej: 402 (la E2) o N5 (búho)" autoCapitalize="characters" value={v.l} onChangeText={t => set('l', String(t).toUpperCase().replace(/[^0-9A-Z]/g, ''))} />
-                    <Text style={s.label}>Turno (opcional)</Text>
-                    <TextInput style={s.input} placeholder="Ej: 5" keyboardType="numeric" value={v.tu} onChangeText={t => set('tu', soloNumeros(t))} />
+                    <Text style={s.label}>Turno o Corre. Línea (opcional)</Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TextInput style={[s.input, { flex: 1 }]} placeholder="Turno: 5" keyboardType="numeric" value={v.tu} onChangeText={t => onChange({ ...v, tu: soloNumeros(t), cl: '' })} />
+                        <TouchableOpacity style={[s.btnCL, v.cl && s.btnActivo]} onPress={() => { Keyboard.dismiss(); setAbreCL(!abreCL); }}>
+                            <Text style={[s.btnTexto, v.cl && s.btnTextoActivo]}>{v.cl ? 'Corre. ' + v.cl : 'Corre. Línea'} ▾</Text>
+                        </TouchableOpacity>
+                    </View>
+                    {abreCL && (
+                        <View style={s.panelCL}>
+                            {['M', 'T'].map((L, i) => (
+                                <React.Fragment key={L}>
+                                    {i === 1 && <View style={s.divisorCL} />}
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={s.colTituloCL}>{L === 'M' ? 'M · Mañana' : 'T · Tarde'}</Text>
+                                        <View style={s.grid}>
+                                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => {
+                                                const cod = L + n;
+                                                return (
+                                                    <TouchableOpacity key={cod} style={[s.btnCh, v.cl === cod && s.btnActivo]}
+                                                        onPress={() => { onChange({ ...v, cl: v.cl === cod ? '' : cod, tu: '' }); setAbreCL(false); }}>
+                                                        <Text style={[s.btnTexto, v.cl === cod && s.btnTextoActivo]}>{n}</Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    </View>
+                                </React.Fragment>
+                            ))}
+                        </View>
+                    )}
                 </View>
             )}
 
@@ -139,6 +172,11 @@ const s = StyleSheet.create({
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
     btn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0' },
     btnAncho: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0' },
+    btnCL: { paddingHorizontal: 12, justifyContent: 'center', borderRadius: 12, backgroundColor: '#f1f5f9', borderWidth: 2, borderColor: '#ddd6fe' },
+    panelCL: { flexDirection: 'row', marginTop: 8, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: '#ddd6fe', backgroundColor: '#faf9ff' },
+    divisorCL: { width: 1, backgroundColor: '#ddd6fe', marginHorizontal: 8 },
+    colTituloCL: { fontSize: 12, fontWeight: '900', color: '#7c3aed', marginBottom: 6, textAlign: 'center' },
+    btnCh: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0' },
     btnActivo: { backgroundColor: '#8b5cf6', borderColor: '#8b5cf6' },
     btnTexto: { fontSize: 13, fontWeight: '700', color: '#64748b' },
     btnTextoActivo: { color: '#fff' },
