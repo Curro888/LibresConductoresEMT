@@ -959,7 +959,7 @@ async function guardarCopia(){
     const [c,h,n]=await Promise.all([db.ref('cambios/'+id).once('value'),db.ref('historial2/'+id).once('value'),db.ref('notas/'+id).once('value')]);
     const txt='LIBRESEMT-COPIA\n'+JSON.stringify({v:1,id:id,fecha:new Date().toISOString(),cambios:c.val()||{},historial:h.val()||{},notas:n.val()||{}});
     const nombre='Copia de seguridad Libres EMT.txt';
-    if(navigator.share){
+    if(navigator.share&&(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||navigator.maxTouchPoints>1)){
       try{
         const fl=new File([txt],nombre,{type:'text/plain'});
         if(navigator.canShare&&navigator.canShare({files:[fl]})){await navigator.share({files:[fl],title:nombre});return}
