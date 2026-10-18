@@ -8,10 +8,10 @@ import { SISTEMAS_CONDUCTORES, sistemaDe, subgruposDe, etiquetaGrupo } from '../
 //   c  = true si es correturnos (sin línea ni turno fijos)
 //   l  = línea (número interno, ej. '402' para la E2)  — solo si c es false
 //   tu = turno (número)                                  — solo si c es false
-//   cl = correturnos de línea (M1..M10 / T1..T10), alternativa al turno
+//   cl = correturnos de línea ('M' o 'T'); su número va en 'tu'
 //   e  = escalafón (en la línea si tiene línea; en la empresa si es correturnos)
 export const PERFIL_VACIO = { g: '', t: '', c: false, l: '', tu: '', cl: '', e: '' };
-// cl = correturnos de línea: 'M1'..'M10' (mañana) o 'T1'..'T10' (tarde). Sustituye al turno fijo.
+// cl = correturnos de línea: 'M' (mañana) o 'T' (tarde). El número de correturnos (ej. 023) va en tu.
 export const PERFIL_CORRETURNOS = { g: '', t: '', c: true, l: '', tu: '', e: '' };
 // Código fijo del grupo abierto de correturnos (el mismo que usa la versión web).
 export const CODIGO_CORRETURNOS = 'CT';
@@ -28,8 +28,8 @@ export function perfilAMiembro(p) {
     const m = { g: String(p.g), t: String(p.t), c: !!p.c };
     if (!p.c) {
         if (String(p.l || '').trim()) m.l = String(p.l).trim();
-        if (/^[MT](10|[1-9])$/.test(String(p.cl || ''))) m.cl = String(p.cl);
-        else if (String(p.tu || '').trim()) m.tu = String(p.tu).trim();
+        if (/^[MT]$/.test(String(p.cl || ''))) m.cl = String(p.cl);
+        if (String(p.tu || '').trim()) m.tu = String(p.tu).trim();
     }
     if (String(p.e || '').trim()) m.e = String(p.e).trim();
     return m;
@@ -42,7 +42,7 @@ export function textoPerfil(m) {
     if (m.c) partes.push('Correturnos');
     else {
         if (m.l) partes.push('Línea ' + m.l);
-        if (m.cl) partes.push('Corre. Línea ' + m.cl);
+        if (m.cl) partes.push('Corre. Línea ' + (m.cl === 'M' ? 'mañana' : 'tarde') + (m.tu ? ' ' + m.tu : ''));
         else if (m.tu) partes.push('Turno ' + m.tu);
     }
     if (m.e) partes.push('Esc. ' + m.e);
@@ -126,11 +126,11 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
                 <View>
                     <Text style={s.label}>Línea (opcional)</Text>
                     <TextInput style={s.input} placeholder="Ej: 402 (la E2) o N5 (búho)" autoCapitalize="characters" value={v.l} onChangeText={t => set('l', String(t).toUpperCase().replace(/[^0-9A-Z]/g, ''))} />
-                    <Text style={s.label}>Turno o Corre. Línea (opcional)</Text>
+                    <Text style={s.label}>Turno (opcional) · si eres correturnos de línea, escribe tu número y marca M o T</Text>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <TextInput style={[s.input, { flex: 1 }]} placeholder="Turno: 5" keyboardType="numeric" value={v.tu} onChangeText={t => onChange({ ...v, tu: soloNumeros(t), cl: '' })} />
+                        <TextInput style={[s.input, { flex: 1 }]} placeholder="Ej: 5 o 023" keyboardType="numeric" value={v.tu} onChangeText={t => set('tu', soloNumeros(t))} />
                         <TouchableOpacity style={[s.btnCL, v.cl && s.btnActivo]} onPress={() => { Keyboard.dismiss(); setAbreCL(!abreCL); }}>
-                            <Text style={[s.btnTexto, v.cl && s.btnTextoActivo]}>{v.cl ? 'Corre. ' + v.cl : 'Corre. Línea'} ▾</Text>
+                            <Text style={[s.btnTexto, v.cl && s.btnTextoActivo]}>{v.cl ? 'Corre. Línea ' + v.cl : 'Corre. Línea'} ▾</Text>
                         </TouchableOpacity>
                     </View>
                     {abreCL && (
@@ -138,20 +138,11 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
                             {['M', 'T'].map((L, i) => (
                                 <React.Fragment key={L}>
                                     {i === 1 && <View style={s.divisorCL} />}
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={s.colTituloCL}>{L === 'M' ? 'M · Mañana' : 'T · Tarde'}</Text>
-                                        <View style={s.grid}>
-                                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => {
-                                                const cod = L + n;
-                                                return (
-                                                    <TouchableOpacity key={cod} style={[s.btnCh, v.cl === cod && s.btnActivo]}
-                                                        onPress={() => { onChange({ ...v, cl: v.cl === cod ? '' : cod, tu: '' }); setAbreCL(false); }}>
-                                                        <Text style={[s.btnTexto, v.cl === cod && s.btnTextoActivo]}>{n}</Text>
-                                                    </TouchableOpacity>
-                                                );
-                                            })}
-                                        </View>
-                                    </View>
+                                    <TouchableOpacity style={[s.btnMT, v.cl === L && s.btnActivo]}
+                                        onPress={() => { onChange({ ...v, cl: v.cl === L ? '' : L }); setAbreCL(false); }}>
+                                        <Text style={[s.btnMTLetra, v.cl === L && s.btnTextoActivo]}>{L}</Text>
+                                        <Text style={[s.btnMTSub, v.cl === L && s.btnTextoActivo]}>{L === 'M' ? 'Mañana' : 'Tarde'}</Text>
+                                    </TouchableOpacity>
                                 </React.Fragment>
                             ))}
                         </View>
@@ -175,8 +166,9 @@ const s = StyleSheet.create({
     btnCL: { paddingHorizontal: 12, justifyContent: 'center', borderRadius: 12, backgroundColor: '#f1f5f9', borderWidth: 2, borderColor: '#ddd6fe' },
     panelCL: { flexDirection: 'row', marginTop: 8, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: '#ddd6fe', backgroundColor: '#faf9ff' },
     divisorCL: { width: 1, backgroundColor: '#ddd6fe', marginHorizontal: 8 },
-    colTituloCL: { fontSize: 12, fontWeight: '900', color: '#7c3aed', marginBottom: 6, textAlign: 'center' },
-    btnCh: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0' },
+    btnMT: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 10, backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0' },
+    btnMTLetra: { fontSize: 20, fontWeight: '900', color: '#64748b' },
+    btnMTSub: { fontSize: 11, fontWeight: '700', color: '#64748b' },
     btnActivo: { backgroundColor: '#8b5cf6', borderColor: '#8b5cf6' },
     btnTexto: { fontSize: 13, fontWeight: '700', color: '#64748b' },
     btnTextoActivo: { color: '#fff' },
