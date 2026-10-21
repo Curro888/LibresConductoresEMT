@@ -10,6 +10,7 @@ import PerfilConductorForm, { PERFIL_VACIO, escalafonValido, validarPerfil, perf
 import { useTheme } from '../context/ThemeContext';
 import CopiaSeguridad from '../components/CopiaSeguridad';
 import { APP_VERSION } from '../config/version';
+import { alerta14Activada, activarAlerta14 } from '../services/notifications';
 
 const HORAS_POR_DIA = 7.5; // Ajustar si el convenio cambia
 
@@ -24,6 +25,8 @@ export default function AjustesScreen({ navigation }) {
     const [editNombre, setEditNombre] = useState('');
     const [editPerfil, setEditPerfil] = useState(PERFIL_VACIO);
     const [fotoPerfil, setFotoPerfil] = useState(null);
+    const [alerta14, setAlerta14] = useState(true);
+    useEffect(() => { alerta14Activada().then(setAlerta14); }, []);
 
     useEffect(() => {
         let unsubCambios, unsubAdmin;
@@ -269,6 +272,22 @@ export default function AjustesScreen({ navigation }) {
                         <Switch
                             value={modoOscuro}
                             onValueChange={toggleModoOscuro}
+                            trackColor={{ false: '#cbd5e1', true: '#7c3aed' }}
+                            thumbColor="#fff"
+                        />
+                    </View>
+                </View>
+
+                {/* Alerta del día 14 */}
+                <View style={s.card}>
+                    <View style={s.filaSwitch}>
+                        <View style={{ flex: 1, paddingRight: 12 }}>
+                            <Text style={s.cardTitulo}>📅 Aviso del día 14</Text>
+                            <Text style={s.cardSub}>Cada día 14 a las 22:00: último día para pedir cobro de días</Text>
+                        </View>
+                        <Switch
+                            value={alerta14}
+                            onValueChange={async (v) => { setAlerta14(v); await activarAlerta14(v); }}
                             trackColor={{ false: '#cbd5e1', true: '#7c3aed' }}
                             thumbColor="#fff"
                         />

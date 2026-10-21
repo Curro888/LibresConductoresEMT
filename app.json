@@ -2,7 +2,7 @@
   "expo": {
     "name": "Libres Conductores EMT",
     "slug": "LibresConductoresEMT",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -35,6 +35,9 @@
         }
       ],
       "expo-secure-store"
-    ]
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }

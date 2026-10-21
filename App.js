@@ -20,7 +20,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { db, auth } from './config/firebase';
 import { ref, onValue } from 'firebase/database';
 import { signInAnonymously } from 'firebase/auth';
-import { registerForPushNotificationsAsync, addNotificationListeners } from './services/notifications'; // push
+import { registerForPushNotificationsAsync, addNotificationListeners, programarAlerta14 } from './services/notifications'; // push
 import { APP_VERSION } from './config/version';
 
 const Stack = createNativeStackNavigator();
@@ -91,6 +91,7 @@ function MainTabs({ route }) {
     useEffect(() => {
         if (!sesion?.miID) return;
         registerForPushNotificationsAsync(sesion.miID);
+        programarAlerta14(); // alerta mensual del día 14 a las 22:00
         const unsubscribe = addNotificationListeners(
             () => {}, // notificación recibida en foreground
             () => {}  // usuario pulsó la notificación

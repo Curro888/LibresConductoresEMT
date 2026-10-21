@@ -2,6 +2,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ref, set, get } from 'firebase/database';
 import { db } from '../config/firebase';
 
@@ -120,5 +121,55 @@ export async function programarRecordatorioSolicitudes(pendientes) {
     });
   } catch (e) {
     console.log('Recordatorio de peticiones:', e?.message || e);
+  }
+}
+
+// Alerta mensual: el día 14 a las 22:00, último día para pedir el cobro de días (hasta el 15 a las 23:59).
+// Se programan los próximos 12 meses en el propio móvil (sin internet) y se recalculan cada vez que se abre la app.
+// Se puede desactivar en Ajustes (se guarda en 'alerta14').
+const ALERTA14_IDS = Array.from({ length: 12 }, (_, i) => 'alerta14-' + i);
+export async function alerta14Activada() {
+  try { return (await AsyncStorage.getItem('alerta14')) !== '0'; } catch (e) { return true; }
+}
+export async function activarAlerta14(activa) {
+  try { await AsyncStorage.setItem('alerta14', activa ? '1' : '0'); } catch (e) {}
+  return programarAlerta14();
+}
+export async function programarAlerta14() {
+  try {
+    if (Platform.OS === 'web') return false;
+    for (const id of ALERTA14_IDS) await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
+    if (!(await alerta14Activada())) return false;
+    let { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') {
+      const r = await Notifications.requestPermissionsAsync();
+      status = r.status;
+    }
+    if (status !== 'granted') return false;
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+      });
+    }
+    const ahora = new Date();
+    let n = 0;
+    for (let i = 0; i < 14 && n < ALERTA14_IDS.length; i++) {
+      const cuando = new Date(ahora.getFullYear(), ahora.getMonth() + i, 14, 22, 0, 0, 0);
+      if (cuando.getTime() <= Date.now() + 60 * 1000) continue;
+      await Notifications.scheduleNotificationAsync({
+        identifier: ALERTA14_IDS[n++],
+        content: {
+          title: '📅 Último día para pedir cobro de días',
+          body: 'Hoy es 14: tienes hasta mañana 15 a las 23:59 para pedir días para cobrar.',
+          sound: 'default',
+        },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: cuando },
+      });
+    }
+    return true;
+  } catch (e) {
+    console.log('Alerta día 14:', e?.message || e);
+    return false;
   }
 }
