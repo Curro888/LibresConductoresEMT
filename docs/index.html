@@ -435,6 +435,21 @@ async function confirmarSel(dB,mB){
   }catch(e){alert('No se pudo enviar: '+(e.code||e.message||e))}
   render();
 }
+// Aviso del día 14 (último día para pedir cobro de días: del 1 al 15 hasta las 23:59)
+function avisoDia14(){
+  const d=new Date().getDate();
+  if(d!==14&&d!==15)return '';
+  return '<div class="card" id="av14" style="background:#fef3c7;border:2px solid #f59e0b;color:#78350f"><b>📅 Último día para pedir cobro de días</b><div class="small" style="margin-top:4px;color:#78350f">'+(d===14?'Hoy es 14: tienes hasta mañana 15 a las 23:59.':'Hoy es 15: tienes hasta las 23:59.')+'</div></div>';
+}
+function bajarAvisoICS(){
+  const n=new Date();let y=n.getFullYear(),m=n.getMonth();
+  if(n.getDate()>14||(n.getDate()===14&&n.getHours()>=22))m++;
+  const f=new Date(y,m,14),pad=x=>String(x).padStart(2,'0'),ds=f.getFullYear()+pad(f.getMonth()+1)+'14';
+  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Libres EMT//ES','CALSCALE:GREGORIAN','BEGIN:VEVENT','UID:aviso-dia14-libres-emt@curro','DTSTAMP:'+ds+'T000000Z','DTSTART:'+ds+'T220000','DTEND:'+ds+'T221500','RRULE:FREQ=MONTHLY;BYMONTHDAY=14','SUMMARY:📅 Último día para pedir cobro de días','DESCRIPTION:Hoy es 14: tienes hasta mañana 15 a las 23:59 para pedir días para cobrar.','BEGIN:VALARM','TRIGGER:PT0M','ACTION:DISPLAY','DESCRIPTION:Último día para pedir cobro de días','END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
+  const u=URL.createObjectURL(new Blob([ics],{type:'text/calendar'}));
+  const a=document.createElement('a');a.href=u;a.download='aviso-dia-14.ics';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),4000);
+}
 function render(){
   if(!S)return;
   if(tab!=='cal'||SEL||MG)cerrarPanelDia();
@@ -442,6 +457,8 @@ function render(){
   if(pcs)$('hsub').textContent='📅 Calendario de '+pcs.n+' · '+textoPerfil(pcs);else{const dp=detallePerfil(S.miPerfil);$('hsub').innerHTML=esc(S.miNombreCompleto+' · '+nombreGrupoSub(S.miGrupoSesion,S.miTipoSesion))+(dp?'<br>'+esc(dp):'')}
   const m=$('main'),y=m.scrollTop,mismo=m.dataset.t===tab;
   if(tab==='cal')vCal();else if(tab==='comp')vComp();else if(tab==='hist')vHist();else if(tab==='gru')vGru();else vAj();
+  const av=document.getElementById('av14');if(av)av.remove();
+  const hb=avisoDia14();if(hb)m.insertAdjacentHTML('afterbegin',hb);
   if(mismo&&m.dataset.sc)m.scrollTop=y;m.dataset.t=tab;
 }
 document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>{DO=null;tab=b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));$('main').scrollTop=0;$('main').dataset.t='';$('main').dataset.sc='';HV=null;render()}));
@@ -803,6 +820,7 @@ function vAj(){
   if(esCT())h+='<div class="card"><b>🔁 Correturnos</b><div class="small" style="margin-top:6px">Grupo abierto. Si cambias tu perfil a línea fija, saldrás de la lista y los que van detrás subirán un puesto.</div></div>';
   else if(esPE())h+='<div class="card"><b>Personales</b><div class="small" style="margin-top:6px">Grupo abierto con todas las cocheras. Si cambias de personal, cámbialo en «Editar mi perfil».</div></div>';
   else if(S.modoGrupo)h+='<div class="card"><b>👥 Grupo</b><div class="small" style="word-break:break-all">Código: '+esc(S.grupoActual)+'</div><button class="btn fill" data-aj="grupo">✏️ Editar grupo</button><div class="small" style="margin-top:6px">Añade a compañeros que no usan la app o corrige sus datos.</div></div>';
+  h+='<div class="card"><div style="font-weight:800">📅 Aviso del día 14</div><div class="small" style="margin:4px 0 8px">Cada día 14 a las 22:00: último día para pedir cobro de días. Se añade a tu calendario del iPhone y se repite todos los meses.</div><button class="btn fill" data-aj="ics" style="margin-top:0">Añadir aviso al calendario</button></div>';
   h+='<div class="card"><div style="font-weight:800">💾 Copia de seguridad</div><div class="small" style="margin:4px 0 8px">Guarda tus cambios, historial y notas donde quieras, y restáuralos cuando lo necesites.</div><button class="btn" data-aj="copia" style="margin-top:0">Guardar copia</button><button class="btn" data-aj="restaurar" style="background:#64748b">Restaurar</button></div>';
   h+='<div class="card"><button class="btn" data-aj="dark" style="margin-top:0">'+(document.body.classList.contains('dark')?'☀️ Modo claro':'🌙 Modo oscuro')+'</button><button class="btn red" data-aj="salir">🚪 Cerrar sesión</button></div>';
   h+='<div class="card small" style="text-align:center">Libres Conductores EMT · versión web para iPhone</div>';
@@ -1010,6 +1028,7 @@ document.addEventListener('click',e=>{
     else if(aj.dataset.aj==='restaurar')pedirCopia();
     else if(aj.dataset.aj==='copiano')cerrarModal();
     else if(aj.dataset.aj==='copiaok')restaurarCopia();
+    else if(aj.dataset.aj==='ics')bajarAvisoICS();
     else if(aj.dataset.aj==='dark'){document.body.classList.toggle('dark');LS.set('darkLC',document.body.classList.contains('dark')?1:0);vAj()}
     else if(aj.dataset.aj==='salir'&&confirm('¿Cerrar sesión en este iPhone?')){limpiar();LS.del('sesionLC');S=null;LF={modo:null,P:null,sis:'C'};pantallaLogin()}
   }
