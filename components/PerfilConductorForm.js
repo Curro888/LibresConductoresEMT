@@ -58,7 +58,7 @@ const soloNumeros = (txt) => String(txt).replace(/[^0-9]/g, '');
 
 // soloCorreturnos: en la entrada a Correturnos (no hay opción de línea fija y el escalafón es obligatorio).
 // escalafonObligatorio / avisoSalirCT: al editar el perfil dentro de Correturnos.
-export default function PerfilConductorForm({ value, onChange, soloCorreturnos = false, escalafonObligatorio = false, avisoSalirCT = false, soloPersonales = false }) {
+export default function PerfilConductorForm({ value, onChange, soloCorreturnos = false, escalafonObligatorio = false, avisoSalirCT = false, soloPersonales = false, permitePersonales = false }) {
     const v = { ...PERFIL_VACIO, ...(value || {}) };
     const set = (campo, dato) => onChange({ ...v, [campo]: dato });
     // Sistema de libres (convencional / búhos / R.S.N): sale del grupo guardado; si aún no hay grupo, de lo que elija.
@@ -72,6 +72,8 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
     }, []);
     const [abreCL, setAbreCL] = useState(false);
     const [cocheraSel, setCocheraSel] = useState((cocheraDe(v.pe) || {}).id || '');
+    const [abrePE, setAbrePE] = useState(!!v.pe);
+    const mostrarPE = soloPersonales || (permitePersonales && abrePE);
     const cocheraAct = COCHERAS_PERSONALES.find(c => c.id === cocheraSel) || null;
     const [sisElegido, setSisElegido] = useState(sistemaDe(v.g));
     const sis = v.g ? sistemaDe(v.g) : sisElegido;
@@ -114,7 +116,18 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
                 ))}
             </View>
 
-            {soloPersonales && (
+            {permitePersonales && !soloPersonales && (
+                <View>
+                    <Text style={s.label}>¿Vas en personal? (el autobús que te lleva y te trae)</Text>
+                    <View style={s.grid}>
+                        <TouchableOpacity style={[s.btnAncho, abrePE && s.btnActivo]} onPress={() => { Keyboard.dismiss(); if (abrePE) set('pe', ''); setAbrePE(!abrePE); }}>
+                            <Text style={[s.btnTexto, abrePE && s.btnTextoActivo]}>🚐 Personales</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
+
+            {mostrarPE && (
                 <View>
                     <Text style={s.label}>Tu cochera</Text>
                     <View style={s.grid}>

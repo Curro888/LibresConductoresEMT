@@ -26,8 +26,6 @@ export default function AjustesScreen({ navigation }) {
     const [editPerfil, setEditPerfil] = useState(PERFIL_VACIO);
     const [fotoPerfil, setFotoPerfil] = useState(null);
     const [alerta14, setAlerta14] = useState(true);
-    const [modalPE, setModalPE] = useState(false);
-    const [pePerfil, setPePerfil] = useState(PERFIL_VACIO);
     useEffect(() => { alerta14Activada().then(setAlerta14); }, []);
 
     useEffect(() => {
@@ -67,7 +65,7 @@ export default function AjustesScreen({ navigation }) {
     }
 
     // Entrar en Personales desde la app ya iniciada (p. ej. un correturnos que coge plaza de personal).
-    async function entrarEnPersonales() {
+    async function entrarEnPersonales(pePerfil) {
         if (!sesion || !sesion.miID) return;
         const err = validarPerfil(pePerfil);
         if (err) { Alert.alert('⚠️', err); return; }
@@ -110,7 +108,7 @@ export default function AjustesScreen({ navigation }) {
             await AsyncStorage.setItem('misGrupos2026', JSON.stringify(lista));
             const nueva = { miID: sesion.miID, miNombreCompleto: nombre, modoGrupo: true, grupoActual: 'PE', miGrupoSesion: m.g, miTipoSesion: m.t, miPerfil: m };
             await AsyncStorage.setItem('sesion2026', JSON.stringify(nueva));
-            setModalPE(false);
+            setModalPerfil(false);
             Alert.alert('✅ Ya estás en Personales', 'Puedes volver a tu otro grupo desde la pantalla de entrada (Cerrar sesión).');
             navigation.replace('Main', nueva);
         } catch (e) {
@@ -125,6 +123,8 @@ export default function AjustesScreen({ navigation }) {
         const m = perfilAMiembro(editPerfil);
         const enCT = !!(sesion.modoGrupo && sesion.grupoActual === 'CT' && sesion.miID);
         const enPE = !!(sesion.modoGrupo && sesion.grupoActual === 'PE' && sesion.miID);
+        // Ha marcado «Personales» en su perfil: entra en el grupo Personales.
+        if (!enPE && m.pe) { await entrarEnPersonales(editPerfil); return; }
         if (enPE && !m.pe) { Alert.alert('⚠️', 'En Personales tienes que elegir tu cochera y tu personal.'); return; }
 
         if (enCT && m.c && !escalafonValido(m.e)) {
@@ -348,19 +348,6 @@ export default function AjustesScreen({ navigation }) {
                     </View>
                 </View>
 
-                {/* Entrar en Personales */}
-                {sesion && sesion.miID && !(sesion.modoGrupo && sesion.grupoActual === 'PE') && (
-                    <TouchableOpacity style={s.card} onPress={() => { setPePerfil({ ...editPerfil, c: false, pe: '' }); setModalPE(true); }}>
-                        <View style={s.filaSwitch}>
-                            <View style={{ flex: 1, paddingRight: 12 }}>
-                                <Text style={s.cardTitulo}>🚐 Entrar en Personales</Text>
-                                <Text style={s.cardSub}>Si has cogido plaza en un personal, entra directamente desde aquí</Text>
-                            </View>
-                            <Text style={s.flecha}>▶</Text>
-                        </View>
-                    </TouchableOpacity>
-                )}
-
                 {/* Estadísticas */}
                 <TouchableOpacity style={s.card} onPress={() => setMostrarStats(!mostrarStats)}>
                     <View style={s.filaSwitch}>
@@ -490,7 +477,7 @@ export default function AjustesScreen({ navigation }) {
                         <Text style={s.modalLabel}>Nombre completo</Text>
                         <TextInput style={s.modalInput} value={editNombre} onChangeText={setEditNombre} placeholder="Tu nombre" placeholderTextColor={theme.textoTenue} maxLength={50} />
 
-                        <PerfilConductorForm value={editPerfil} onChange={setEditPerfil} escalafonObligatorio={!!(sesion && sesion.modoGrupo && sesion.grupoActual === "CT")} avisoSalirCT={!!(sesion && sesion.modoGrupo && sesion.grupoActual === "CT")} soloPersonales={!!(sesion && sesion.modoGrupo && sesion.grupoActual === "PE")} />
+                        <PerfilConductorForm value={editPerfil} onChange={setEditPerfil} escalafonObligatorio={!!(sesion && sesion.modoGrupo && sesion.grupoActual === "CT")} avisoSalirCT={!!(sesion && sesion.modoGrupo && sesion.grupoActual === "CT")} soloPersonales={!!(sesion && sesion.modoGrupo && sesion.grupoActual === "PE")} permitePersonales={!!(sesion && sesion.miID && !(sesion.modoGrupo && sesion.grupoActual === "PE"))} />
 
                         <View style={{ flexDirection: 'row', gap: 8, marginTop: 20 }}>
                             <TouchableOpacity style={s.btnCancelarModal} onPress={() => setModalPerfil(false)}>
@@ -498,31 +485,6 @@ export default function AjustesScreen({ navigation }) {
                             </TouchableOpacity>
                             <TouchableOpacity style={s.btnGuardarModal} onPress={guardarPerfil}>
                                 <Text style={s.btnGuardarModalTexto}>Guardar</Text>
-                            </TouchableOpacity>
-                        </View>
-                      </ScrollView>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* Modal entrar en Personales */}
-            <Modal visible={modalPE} transparent animationType="slide" onRequestClose={() => setModalPE(false)}>
-                <View style={s.overlayBottom}>
-                    <View style={[s.modalCard, { maxHeight: '92%' }]}>
-                      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                        <Text style={s.modalTitulo}>🚐 Entrar en Personales</Text>
-                        <PerfilConductorForm value={pePerfil} onChange={setPePerfil} soloPersonales />
-                        {!!(sesion && sesion.modoGrupo && sesion.grupoActual === 'CT') && (
-                            <Text style={{ fontSize: 12, color: '#b45309', marginTop: 8 }}>
-                                Al entrar saldrás de la lista de Correturnos y los que van detrás subirán un puesto.
-                            </Text>
-                        )}
-                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 20 }}>
-                            <TouchableOpacity style={s.btnCancelarModal} onPress={() => setModalPE(false)}>
-                                <Text style={s.btnCancelarModalTexto}>Cancelar</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={s.btnGuardarModal} onPress={entrarEnPersonales}>
-                                <Text style={s.btnGuardarModalTexto}>Entrar</Text>
                             </TouchableOpacity>
                         </View>
                       </ScrollView>
