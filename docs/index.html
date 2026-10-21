@@ -125,15 +125,16 @@ const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return 
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const DSEM=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 const SUBS=['A','B','C','D','E','F','G','H','I','J'];
+const SUB_RSN_N=['41','42','43','44','45','46','47','48','49','50'];
 const SUB_RSN=['1','2','3','4','5','6','7','8','9','A','B','C','D','E','F','G','H','I','J','K'];
-const SISTEMAS=[{id:'C',nombre:'Línea convencional',grupos:['1','2','3','4','5']},{id:'B',nombre:'Búhos',grupos:['B1','B2','B3','B4','B5']},{id:'R',nombre:'R.S.N',grupos:['RA','RB']}];
+const SISTEMAS=[{id:'C',nombre:'Línea convencional',grupos:['1','2','3','4','5']},{id:'B',nombre:'Búhos',grupos:['B1','B2','B3','B4','B5']},{id:'R',nombre:'R.S.N',grupos:['RA','RB','RN']}];
 const ANIOS=Object.keys(POR_ANIO).map(Number).sort();
 const VACIO={libres:Array(12).fill([]),subgrupo:Array(12).fill([]),lrj:Array(12).fill([])};
 
 function sistemaDe(g){g=String(g||'');return g[0]==='R'?'R':g[0]==='B'?'B':'C'}
-function subgruposDe(g){return sistemaDe(g)==='R'?SUB_RSN:SUBS}
-function nombreGrupo(g){g=String(g||'');const s=sistemaDe(g);return s==='B'?'Búhos '+g.slice(1):s==='R'?'R.S.N '+g.slice(1):'Grupo '+g}
-function nombreGrupoSub(g,t){g=String(g||'');return sistemaDe(g)==='R'?'R.S.N '+g.slice(1)+(t||''):nombreGrupo(g)+(t?' · '+t:'')}
+function subgruposDe(g){return String(g)==='RN'?SUB_RSN_N:sistemaDe(g)==='R'?SUB_RSN:SUBS}
+function nombreGrupo(g){g=String(g||'');const s=sistemaDe(g);if(g==='RN')return 'R.S.N Nº41-50';return s==='B'?'Búhos '+g.slice(1):s==='R'?'R.S.N '+g.slice(1):'Grupo '+g}
+function nombreGrupoSub(g,t){g=String(g||'');if(g==='RN')return 'R.S.N Nº'+(t||'');return sistemaDe(g)==='R'?'R.S.N '+g.slice(1)+(t||''):nombreGrupo(g)+(t?' · '+t:'')}
 function etiquetaGrupo(g,t){g=String(g||'');const s=sistemaDe(g);return s==='B'?'Bú'+g.slice(1)+'·'+t:s==='R'?'RSN '+g.slice(1)+t:'G'+g+'·'+t}
 function detallePerfil(m){const p=[];if(!m)return'';if(m.c)p.push('Correturnos');else{if(m.l)p.push('Línea '+m.l);if(m.cl)p.push('Corre. Línea '+(m.cl==='M'?'mañana':'tarde')+(m.tu?' '+m.tu:''));else if(m.tu)p.push('Turno '+m.tu)}if(m.e)p.push('Esc. '+m.e);return p.join(' · ')}
 function textoPerfil(m){if(!m)return'';const d=detallePerfil(m);return etiquetaGrupo(m.g,m.t)+(d?' · '+d:'')}
