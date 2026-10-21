@@ -499,6 +499,7 @@ export default function AjustesScreen({ navigation }) {
                         <Text style={s.acercaDeEmoji}>📅</Text>
                         <Text style={s.acercaDeNombre}>Libres Conductores EMT</Text>
                         <Text style={s.acercaDeVersion}>Versión {APP_VERSION}</Text>
+                        <Text style={[s.acercaDeTexto, { fontStyle: 'italic', marginBottom: 10 }]}>By Curro 💜</Text>
                         <Text style={s.acercaDeTexto}>
                             App para gestionar turnos, cambios y coordinación con el equipo.
                         </Text>

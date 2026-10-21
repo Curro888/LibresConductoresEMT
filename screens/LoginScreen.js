@@ -284,6 +284,7 @@ export default function LoginScreen({ navigation }) {
         <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
             <Text style={s.titulo}>🚌 Libres Conductores</Text>
             <Text style={s.subtitulo}>EMT · Planificación 2027</Text>
+            <Text style={s.byCurro}>By Curro 💜</Text>
 
             {!isConnected && (
                 <View style={s.bannerSinConexion}>
@@ -466,7 +467,8 @@ export default function LoginScreen({ navigation }) {
 const s = StyleSheet.create({
     container: { flexGrow: 1, backgroundColor: '#1e1b4b', alignItems: 'center', justifyContent: 'center', padding: 24, paddingVertical: 50 },
     titulo: { fontSize: 32, fontWeight: '900', color: '#a78bfa', marginBottom: 4 },
-    subtitulo: { fontSize: 14, color: '#c4b5fd', marginBottom: 32 },
+    subtitulo: { fontSize: 14, color: '#c4b5fd', marginBottom: 4 },
+    byCurro: { fontSize: 13, fontStyle: 'italic', color: '#a78bfa', marginBottom: 28 },
     bannerSinConexion: { backgroundColor: '#ef4444', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10, marginBottom: 16 },
     bannerSinConexionTexto: { color: '#fff', fontWeight: '700', fontSize: 13 },
     card: { backgroundColor: '#ffffff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 380 },
