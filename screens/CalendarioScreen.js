@@ -9,6 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { db } from '../config/firebase';
 import { ref, onValue, set, remove, update, push, get } from 'firebase/database';
 import { textoPerfil } from '../components/PerfilConductorForm';
+import { textoPersonal } from '../config/personales';
 import { nombreGrupoSub } from '../config/libresConductores';
 import { anioInicial, equipoBase, mesesArr, getDiasLibres, getDiasEspeciales, esFestivo, getGruposLibres, MAX_LIBRES_VAC, claveDia, leerDia, partesDia, claveDiaActual, esDiaLibre } from '../config/datos';
 import { useTheme } from '../context/ThemeContext';
@@ -1145,6 +1146,7 @@ export default function CalendarioScreen({ navigation, route }) {
                 {(() => {
                     const mp = sesion.miPerfil || {};
                     const partes = [];
+                    if (mp.pe) partes.push('Personal ' + textoPersonal(mp.pe));
                     if (mp.c) partes.push('Correturnos');
                     else {
                         if (mp.l) partes.push('Línea ' + mp.l);
