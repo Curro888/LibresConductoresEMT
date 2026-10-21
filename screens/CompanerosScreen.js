@@ -11,6 +11,7 @@ import { db } from '../config/firebase';
 import { ref, onValue } from 'firebase/database';
 import { equipoBase, mesesArr, diasSemanaArr, getDiasLibres, leerDia } from '../config/datos';
 import { textoPerfil } from '../components/PerfilConductorForm';
+import { COCHERAS_PERSONALES, cocheraDe, ordenPersonal } from '../config/personales';
 import { useTheme } from '../context/ThemeContext';
 
 function esLibreHoy(grupo, turno, mIdx, d, cambios) {
@@ -36,6 +37,9 @@ export default function CompanerosScreen({ navigation }) {
     // Cada persona ve las fotos que ella misma ha puesto, no las que hayan puesto los demás.
     const [fotos, setFotos] = useState({});
     const [busqueda, setBusqueda] = useState('');
+    // Personales: filtro por cochera y por personal
+    const [filtroCochera, setFiltroCochera] = useState('');
+    const [filtroPersonal, setFiltroPersonal] = useState('');
     // Foto de perfil propia, la misma que se pone en Ajustes
     const [fotoPerfil, setFotoPerfil] = useState(null);
 
@@ -146,7 +150,15 @@ export default function CompanerosScreen({ navigation }) {
     const listaCompaneros = useMemo(() => {
         if (!sesion) return [];
         const esCT = sesion.modoGrupo && sesion.grupoActual === 'CT';
+        const esPE = sesion.modoGrupo && sesion.grupoActual === 'PE';
         let base = equipoActual;
+        if (esPE) {
+            const q = busqueda.trim();
+            if (q) base = base.filter(p => String(p.id || '').indexOf(q) >= 0);
+            if (filtroCochera) base = base.filter(p => (cocheraDe(p.pe) || {}).id === filtroCochera);
+            if (filtroPersonal) base = base.filter(p => p.pe === filtroPersonal);
+            base = [...base].sort((a, b) => ordenPersonal(a.pe) - ordenPersonal(b.pe));
+        }
         if (esCT) {
             const q = busqueda.trim();
             if (q) base = base.filter(p => String(p.id || '').indexOf(q) >= 0);
@@ -160,7 +172,7 @@ export default function CompanerosScreen({ navigation }) {
             const conectado = presencias[p.id] && (Date.now() - presencias[p.id].ts) < 120000;
             return { p, esMio, esLibre, conectado };
         });
-    }, [cambiosTodos, presencias, sesion, mIdx, d, equipoActual, busqueda]);
+    }, [cambiosTodos, presencias, sesion, mIdx, d, equipoActual, busqueda, filtroCochera, filtroPersonal]);
 
     const s = getStyles(theme);
 
@@ -193,6 +205,36 @@ export default function CompanerosScreen({ navigation }) {
                     value={busqueda}
                     onChangeText={setBusqueda}
                 />
+            )}
+            {sesion.modoGrupo && sesion.grupoActual === 'PE' && (
+                <View>
+                    <TextInput
+                        style={{ backgroundColor: theme.card, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginHorizontal: 16, marginBottom: 8, color: theme.texto, fontSize: 15 }}
+                        placeholder="🔎 Buscar por número de empleado"
+                        placeholderTextColor="#94a3b8"
+                        keyboardType="numeric"
+                        value={busqueda}
+                        onChangeText={setBusqueda}
+                    />
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: 6 }} contentContainerStyle={{ paddingHorizontal: 12 }}>
+                        {[{ id: '', nombre: 'Todas' }, ...COCHERAS_PERSONALES].map(co => (
+                            <TouchableOpacity key={co.id || 'todas'} onPress={() => { setFiltroCochera(co.id); setFiltroPersonal(''); }}
+                                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, marginRight: 6, backgroundColor: filtroCochera === co.id ? theme.primario : theme.card, borderWidth: 1, borderColor: filtroCochera === co.id ? theme.primario : '#cbd5e1' }}>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: filtroCochera === co.id ? '#fff' : theme.textoSecundario }}>{co.nombre}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                    {!!filtroCochera && (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: 6 }} contentContainerStyle={{ paddingHorizontal: 12 }}>
+                            {[''].concat((COCHERAS_PERSONALES.find(x => x.id === filtroCochera) || { personales: [] }).personales).map(pe => (
+                                <TouchableOpacity key={pe || 'todos'} onPress={() => setFiltroPersonal(pe)}
+                                    style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, marginRight: 6, backgroundColor: filtroPersonal === pe ? theme.primario : theme.card, borderWidth: 1, borderColor: filtroPersonal === pe ? theme.primario : '#cbd5e1' }}>
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: filtroPersonal === pe ? '#fff' : theme.textoSecundario }}>{pe || 'Todos'}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    )}
+                </View>
             )}
             <ScrollView showsVerticalScrollIndicator={false}>
                 {listaCompaneros.map(({ p, esMio, esLibre, conectado }) => {

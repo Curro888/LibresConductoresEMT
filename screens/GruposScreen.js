@@ -172,7 +172,8 @@ export default function GruposScreen({ navigation }) {
     // Solo puede borrar el grupo quien lo creó, o alguien de la lista de administradores del proyecto.
     // Si el grupo es antiguo y no tiene "creador" guardado, solo un administrador puede borrarlo.
     const esCT = !!(sesion && sesion.modoGrupo && sesion.grupoActual === 'CT');
-    const puedeBorrarGrupo = sesion && !esCT && (
+    const esPE = !!(sesion && sesion.modoGrupo && sesion.grupoActual === 'PE');
+    const puedeBorrarGrupo = sesion && !esCT && !esPE && (
         !!administradores[sesion.miID] ||
         (creadorGrupo && sesion.miID === creadorGrupo)
     );
@@ -328,7 +329,7 @@ export default function GruposScreen({ navigation }) {
                                 </View>
                                 {!esCT && <TouchableOpacity style={sc.btnEditar} onPress={() => {
                                     setEditNombre(p.n); setEditID(p.id);
-                                    setEditPerfil({ g: String(p.g || ''), t: p.t || '', c: !!p.c, l: p.l || '', tu: p.tu || '', cl: p.cl || '', e: p.e || '' });
+                                    setEditPerfil({ g: String(p.g || ''), t: p.t || '', c: !!p.c, l: p.l || '', tu: p.tu || '', cl: p.cl || '', e: p.e || '', pe: p.pe || '' });
                                     setModalEditar({ idx });
                                 }}>
                                     <Text style={sc.btnEditarTexto}>✏️</Text>
@@ -364,7 +365,7 @@ export default function GruposScreen({ navigation }) {
                         <TextInput style={sc.input} value={editNombre} onChangeText={setEditNombre} placeholder="Nombre completo" />
                         <Text style={sc.modalLabel}>Número de empleado</Text>
                         <TextInput style={sc.input} value={editID} onChangeText={setEditID} placeholder="Ej: 1234" keyboardType="numeric" />
-                        <PerfilConductorForm value={editPerfil} onChange={setEditPerfil} />
+                        <PerfilConductorForm value={editPerfil} onChange={setEditPerfil} soloPersonales={!!(sesion && sesion.modoGrupo && sesion.grupoActual === 'PE')} />
                         <View style={sc.modalBtns}>
                             <TouchableOpacity style={sc.btnCancelar} onPress={() => setModalEditar(null)}>
                                 <Text style={sc.btnCancelarTexto}>Cancelar</Text>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Keyboard } from 'react-native';
 import { SISTEMAS_CONDUCTORES, sistemaDe, subgruposDe, etiquetaGrupo } from '../config/libresConductores';
+import { COCHERAS_PERSONALES, cocheraDe, textoPersonal } from '../config/personales';
 
 // Perfil de un conductor/a:
 //   g  = grupo de libres ('1'..'5')
@@ -10,7 +11,9 @@ import { SISTEMAS_CONDUCTORES, sistemaDe, subgruposDe, etiquetaGrupo } from '../
 //   tu = turno (número)                                  — solo si c es false
 //   cl = correturnos de línea ('M' o 'T'); su número va en 'tu'
 //   e  = escalafón (en la línea si tiene línea; en la empresa si es correturnos)
-export const PERFIL_VACIO = { g: '', t: '', c: false, l: '', tu: '', cl: '', e: '' };
+export const PERFIL_VACIO = { g: '', t: '', c: false, l: '', tu: '', cl: '', e: '', pe: '' };
+// pe = personal (autobús que lleva y trae a los compañeros), ej. 'P18'. Solo en el grupo Personales.
+export const PERFIL_PERSONALES = { g: '', t: '', c: false, l: '', tu: '', cl: '', e: '', pe: '' };
 // cl = correturnos de línea: 'M' (mañana) o 'T' (tarde). El número de correturnos (ej. 023) va en tu.
 export const PERFIL_CORRETURNOS = { g: '', t: '', c: true, l: '', tu: '', e: '' };
 // Código fijo del grupo abierto de correturnos (el mismo que usa la versión web).
@@ -32,6 +35,7 @@ export function perfilAMiembro(p) {
         if (String(p.tu || '').trim()) m.tu = String(p.tu).trim();
     }
     if (String(p.e || '').trim()) m.e = String(p.e).trim();
+    if (String(p.pe || '').trim()) m.pe = String(p.pe).trim();
     return m;
 }
 
@@ -39,6 +43,7 @@ export function perfilAMiembro(p) {
 export function textoPerfil(m) {
     if (!m) return '';
     const partes = [etiquetaGrupo(m.g, m.t)];
+    if (m.pe) { partes.push('Personal ' + textoPersonal(m.pe)); return partes.join(' · '); }
     if (m.c) partes.push('Correturnos');
     else {
         if (m.l) partes.push('Línea ' + m.l);
@@ -53,7 +58,7 @@ const soloNumeros = (txt) => String(txt).replace(/[^0-9]/g, '');
 
 // soloCorreturnos: en la entrada a Correturnos (no hay opción de línea fija y el escalafón es obligatorio).
 // escalafonObligatorio / avisoSalirCT: al editar el perfil dentro de Correturnos.
-export default function PerfilConductorForm({ value, onChange, soloCorreturnos = false, escalafonObligatorio = false, avisoSalirCT = false }) {
+export default function PerfilConductorForm({ value, onChange, soloCorreturnos = false, escalafonObligatorio = false, avisoSalirCT = false, soloPersonales = false }) {
     const v = { ...PERFIL_VACIO, ...(value || {}) };
     const set = (campo, dato) => onChange({ ...v, [campo]: dato });
     // Sistema de libres (convencional / búhos / R.S.N): sale del grupo guardado; si aún no hay grupo, de lo que elija.
@@ -66,6 +71,8 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
         return () => { a.remove(); b.remove(); };
     }, []);
     const [abreCL, setAbreCL] = useState(false);
+    const [cocheraSel, setCocheraSel] = useState((cocheraDe(v.pe) || {}).id || '');
+    const cocheraAct = COCHERAS_PERSONALES.find(c => c.id === cocheraSel) || null;
     const [sisElegido, setSisElegido] = useState(sistemaDe(v.g));
     const sis = v.g ? sistemaDe(v.g) : sisElegido;
     const sistema = SISTEMAS_CONDUCTORES.find(x => x.id === sis) || SISTEMAS_CONDUCTORES[0];
@@ -107,13 +114,33 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
                 ))}
             </View>
 
-            {!soloCorreturnos && <Text style={s.label}>¿Tienes línea asignada?</Text>}
+            {soloPersonales && (
+                <View>
+                    <Text style={s.label}>Tu cochera</Text>
+                    <View style={s.grid}>
+                        {COCHERAS_PERSONALES.map(c => (
+                            <TouchableOpacity key={c.id} style={[s.btnAncho, cocheraSel === c.id && s.btnActivo]} onPress={() => { Keyboard.dismiss(); setCocheraSel(c.id); if (cocheraDe(v.pe) && cocheraDe(v.pe).id !== c.id) set('pe', ''); }}>
+                                <Text style={[s.btnTexto, cocheraSel === c.id && s.btnTextoActivo]}>{c.nombre}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                    {cocheraAct && <Text style={s.label}>Tu personal</Text>}
+                    {cocheraAct && <View style={s.grid}>
+                        {cocheraAct.personales.map(p => (
+                            <TouchableOpacity key={p} style={[s.btnAncho, v.pe === p && s.btnActivo]} onPress={() => { Keyboard.dismiss(); set('pe', p); }}>
+                                <Text style={[s.btnTexto, v.pe === p && s.btnTextoActivo]}>{p}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>}
+                </View>
+            )}
+            {!soloCorreturnos && !soloPersonales && <Text style={s.label}>¿Tienes línea asignada?</Text>}
             {avisoSalirCT && !v.c && (
                 <Text style={{ fontSize: 12, color: '#b45309', marginTop: 8 }}>
                     Al guardar con línea fija saldrás de la lista de Correturnos y los que van detrás subirán un puesto.
                 </Text>
             )}
-            {!soloCorreturnos && <View style={s.grid}>
+            {!soloCorreturnos && !soloPersonales && <View style={s.grid}>
                 <TouchableOpacity style={[s.btnAncho, !v.c && s.btnActivo]} onPress={() => { Keyboard.dismiss(); set('c', false); }}>
                     <Text style={[s.btnTexto, !v.c && s.btnTextoActivo]}>Sí, línea fija</Text>
                 </TouchableOpacity>
@@ -122,7 +149,7 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
                 </TouchableOpacity>
             </View>}
 
-            {!v.c && (
+            {!v.c && !soloPersonales && (
                 <View>
                     <Text style={s.label}>Línea (opcional)</Text>
                     <TextInput style={s.input} placeholder="Ej: 402 (la E2) o N5 (búho)" autoCapitalize="characters" value={v.l} onChangeText={t => set('l', String(t).toUpperCase().replace(/[^0-9A-Z]/g, ''))} />
@@ -150,8 +177,8 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
                 </View>
             )}
 
-            <Text style={s.label}>{(v.c ? 'Escalafón en la empresa' : 'Escalafón en la línea') + ((soloCorreturnos || (escalafonObligatorio && v.c)) ? ' (obligatorio)' : ' (opcional)')}</Text>
-            <TextInput style={s.input} placeholder="Ej: 25 (puedes cambiarlo cuando quieras)" keyboardType="numeric" value={v.e} onChangeText={t => set('e', soloNumeros(t))} />
+            {!soloPersonales && <Text style={s.label}>{(v.c ? 'Escalafón en la empresa' : 'Escalafón en la línea') + ((soloCorreturnos || (escalafonObligatorio && v.c)) ? ' (obligatorio)' : ' (opcional)')}</Text>}
+            {!soloPersonales && <TextInput style={s.input} placeholder="Ej: 25 (puedes cambiarlo cuando quieras)" keyboardType="numeric" value={v.e} onChangeText={t => set('e', soloNumeros(t))} />}
             {tecladoAlto > 0 && <View style={{ height: tecladoAlto }} />}
         </View>
     );

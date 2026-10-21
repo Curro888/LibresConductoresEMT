@@ -6,8 +6,9 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../config/firebase';
 import { ref, get, set, update } from 'firebase/database';
-import PerfilConductorForm, { PERFIL_VACIO, PERFIL_CORRETURNOS, CODIGO_CORRETURNOS, escalafonValido, validarPerfil, perfilAMiembro, textoPerfil } from '../components/PerfilConductorForm';
+import PerfilConductorForm, { PERFIL_VACIO, PERFIL_PERSONALES, PERFIL_CORRETURNOS, CODIGO_CORRETURNOS, escalafonValido, validarPerfil, perfilAMiembro, textoPerfil } from '../components/PerfilConductorForm';
 import { etiquetaGrupo } from '../config/libresConductores';
+import { CODIGO_PERSONALES } from '../config/personales';
 import { withFirebaseErrorHandling } from '../utils/firebaseErrorHandler';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 
@@ -26,6 +27,11 @@ export default function LoginScreen({ navigation }) {
     const [ctNombre, setCtNombre] = useState('');
     const [ctID, setCtID] = useState('');
     const [perfilCT, setPerfilCT] = useState(PERFIL_CORRETURNOS);
+
+    // Personales (grupo abierto: autobuses que llevan y traen a los compañeros, por cochera)
+    const [peNombre, setPeNombre] = useState('');
+    const [peID, setPeID] = useState('');
+    const [perfilPE, setPerfilPE] = useState(PERFIL_PERSONALES);
 
     // Unirse a un grupo existente
     const [grupoCodigo, setGrupoCodigo] = useState('');
@@ -196,6 +202,38 @@ export default function LoginScreen({ navigation }) {
         navigation.replace('Main', sesion);
     }
 
+    async function entrarPersonales() {
+        if (!isConnected) { Alert.alert('Sin conexión', 'Necesitas internet para entrar en Personales.'); return; }
+        const nombre = peNombre.trim();
+        const id = peID.trim();
+        if (!nombre || !id) { Alert.alert('Error', 'Escribe tu nombre y tu número de empleado'); return; }
+        const errPerfil = validarPerfil(perfilPE);
+        if (errPerfil) { Alert.alert('Error', errPerfil); return; }
+        if (!perfilPE.pe) { Alert.alert('Error', 'Elige tu cochera y tu personal'); return; }
+        const m = perfilAMiembro({ ...perfilPE, c: false });
+
+        const result = await withFirebaseErrorHandling(async () => {
+            const snap = await get(ref(db, `grupos/${CODIGO_PERSONALES}`));
+            const g = snap.val();
+            // El grupo se crea la primera vez que alguien entra (sin contraseña, es abierto).
+            if (!g || !g.nombre) {
+                await update(ref(db, `grupos/${CODIGO_PERSONALES}`), { nombre: 'Personales', pass: '', creador: id });
+            }
+            await set(ref(db, `grupos/${CODIGO_PERSONALES}/miembros/${id}`), { n: nombre, id, ...m });
+            return true;
+        });
+        if (!result) return;
+
+        const sesion = {
+            miID: id, miNombreCompleto: nombre,
+            modoGrupo: true, grupoActual: CODIGO_PERSONALES,
+            miGrupoSesion: m.g, miTipoSesion: m.t, miPerfil: m
+        };
+        await AsyncStorage.setItem('sesion2026', JSON.stringify(sesion));
+        await guardarGrupoEnLista({ codigo: CODIGO_PERSONALES, id, nombre, tipo: m.t, grupoLibres: m.g, perfil: m });
+        navigation.replace('Main', sesion);
+    }
+
     async function crearGrupo() {
         if (!isConnected) { Alert.alert('Sin conexión', 'Necesitas internet para crear un grupo.'); return; }
 
@@ -277,6 +315,9 @@ export default function LoginScreen({ navigation }) {
                     <TouchableOpacity style={[s.btnGrande, { marginTop: 8 }]} onPress={() => setModo('correturnos')}>
                         <Text style={s.btnGrandeTexto}>🔁 Correturnos</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity style={[s.btnGrande, { marginTop: 8 }]} onPress={() => setModo('personales')}>
+                        <Text style={s.btnGrandeTexto}>🚐 Personales</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={[s.btnGrande, { marginTop: 8, borderColor: '#94a3b8' }]} onPress={() => setModo('individual')}>
                         <Text style={[s.btnGrandeTexto, { color: '#64748b' }]}>👤 Individual</Text>
                     </TouchableOpacity>
@@ -296,6 +337,10 @@ export default function LoginScreen({ navigation }) {
                     <TouchableOpacity style={[s.btnGrande, { marginTop: 12 }]} onPress={() => setModo('correturnos')}>
                         <Text style={s.btnGrandeTexto}>🔁 Correturnos</Text>
                         <Text style={s.btnGrandeSubtexto}>Todos los correturnos, por escalafón</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[s.btnGrande, { marginTop: 12 }]} onPress={() => setModo('personales')}>
+                        <Text style={s.btnGrandeTexto}>🚐 Personales</Text>
+                        <Text style={s.btnGrandeSubtexto}>Los autobuses de personal, por cocheras</Text>
                     </TouchableOpacity>
                 </View>
             )}
@@ -326,6 +371,23 @@ export default function LoginScreen({ navigation }) {
                     <PerfilConductorForm value={perfilCT} onChange={setPerfilCT} soloCorreturnos />
                     <TouchableOpacity style={s.btnPrimario} onPress={entrarCorreturnos}>
                         <Text style={s.btnPrimarioTexto}>Entrar en Correturnos</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setModo(gruposGuardados.length > 0 ? 'selector' : null)} style={s.btnVolver}>
+                        <Text style={s.btnVolverTexto}>← Volver</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {modo === 'personales' && (
+                <View style={s.card}>
+                    <Text style={s.cardTitulo}>🚐 Personales</Text>
+                    <Text style={s.label}>Tu nombre</Text>
+                    <TextInput style={s.input} placeholder="Ej: Curro" value={peNombre} onChangeText={setPeNombre} />
+                    <Text style={s.label}>Tu número de empleado</Text>
+                    <TextInput style={s.input} placeholder="Ej: 1234" keyboardType="numeric" value={peID} onChangeText={setPeID} />
+                    <PerfilConductorForm value={perfilPE} onChange={setPerfilPE} soloPersonales />
+                    <TouchableOpacity style={s.btnPrimario} onPress={entrarPersonales}>
+                        <Text style={s.btnPrimarioTexto}>Entrar en Personales</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setModo(gruposGuardados.length > 0 ? 'selector' : null)} style={s.btnVolver}>
                         <Text style={s.btnVolverTexto}>← Volver</Text>
