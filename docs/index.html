@@ -136,7 +136,7 @@ function subgruposDe(g){return String(g)==='RN'?SUB_RSN_N:sistemaDe(g)==='R'?SUB
 function nombreGrupo(g){g=String(g||'');const s=sistemaDe(g);if(g==='RN')return 'R.S.N Nº41-50';return s==='B'?'Búhos '+g.slice(1):s==='R'?'R.S.N '+g.slice(1):'Grupo '+g}
 function nombreGrupoSub(g,t){g=String(g||'');if(g==='RN')return 'R.S.N Nº'+(t||'');return sistemaDe(g)==='R'?'R.S.N '+g.slice(1)+(t||''):nombreGrupo(g)+(t?' · '+t:'')}
 function etiquetaGrupo(g,t){g=String(g||'');const s=sistemaDe(g);return s==='B'?'Bú'+g.slice(1)+'·'+t:s==='R'?'RSN '+g.slice(1)+t:'G'+g+'·'+t}
-function detallePerfil(m){const p=[];if(!m)return'';if(m.c)p.push('Correturnos');else{if(m.l)p.push('Línea '+m.l);if(m.cl)p.push('Corre. Línea '+(m.cl==='M'?'mañana':'tarde')+(m.tu?' '+m.tu:''));else if(m.tu)p.push('Turno '+m.tu)}if(m.e)p.push('Esc. '+m.e);return p.join(' · ')}
+function detallePerfil(m){const p=[];if(!m)return'';if(m.pe)return 'Personal '+textoPersonal(m.pe);if(m.c)p.push('Correturnos');else{if(m.l)p.push('Línea '+m.l);if(m.cl)p.push('Corre. Línea '+(m.cl==='M'?'mañana':'tarde')+(m.tu?' '+m.tu:''));else if(m.tu)p.push('Turno '+m.tu)}if(m.e)p.push('Esc. '+m.e);return p.join(' · ')}
 function textoPerfil(m){if(!m)return'';const d=detallePerfil(m);return etiquetaGrupo(m.g,m.t)+(d?' · '+d:'')}
 function getLibres(y,g,t){const po=POR_ANIO[y];if(!po)return VACIO;const s=sistemaDe(g);const tb=po[s];if(!tb)return VACIO;t=String(t||'').toUpperCase();return tb[(s==='C'?String(g):String(g).slice(1))+t]||VACIO}
 function anioInicial(){const h=new Date().getFullYear();if(ANIOS.includes(h))return h;const f=ANIOS.filter(a=>a>h);return f.length?Math.min(...f):Math.max(...ANIOS)}
@@ -190,6 +190,14 @@ function avisoSinDatos(g,t){return getLibres(anio,g,t)===VACIO?'<div class="card
 let LF={modo:null,P:null,sis:'C'};
 const CT_COD='CT';
 function esCT(){return !!(S&&S.modoGrupo&&S.grupoActual===CT_COD)}
+// Personales: autobuses que llevan y traen a los compañeros, por cocheras (datos de Mariano y Roberto, MadridEnRuta 2026-10-06).
+// La Elipa está ahora dentro de Fuencarral por las obras: el P18 va en Fuencarral. Para separarla basta con mover 'P18' a una cochera nueva.
+const PE_COD='PE';
+const COCHERAS=[{id:'Fuencarral',nombre:'Fuencarral / La Elipa',personales:['P1','P2','P3','P4','P5','P6','P7','P8','P9','P10','P11','P12','P18','P26']},{id:'Carabanchel',nombre:'Carabanchel',personales:['P13','P14','P15','P16','P17','P25']},{id:'Entrevias',nombre:'Entrevías',personales:['P19','P20','P21','P22']},{id:'Sanchinarro',nombre:'Sanchinarro',personales:['889 MR1','P23','P24']}];
+function esPE(){return !!(S&&S.modoGrupo&&S.grupoActual===PE_COD)}
+function cocheraDe(pe){pe=String(pe||'');return COCHERAS.find(c=>c.personales.includes(pe))||null}
+function textoPersonal(pe){if(!pe)return'';const c=cocheraDe(pe);return String(pe)+(c?' · '+c.nombre:'')}
+function ordenPersonal(pe){let i=0;for(const c of COCHERAS)for(const p of c.personales){if(p===String(pe))return i;i++}return 1e9}
 function pantallaLogin(){
   $('nav').classList.add('hide');$('hsub').textContent='¿Cómo quieres entrar?';
   const gs=LS.get('gruposGuardadosLC')||[];
@@ -200,15 +208,16 @@ function pantallaLogin(){
     h+='<button class="tile" style="background:#2563eb" data-modo="ind"><div class="circ">👤</div><div><b>Individual</b><small>Solo para mí</small></div></button>';
     h+='<button class="tile" style="background:#16a34a" data-modo="unir"><div class="circ">👥</div><div><b>Unirme a un grupo</b><small>Con el código y la contraseña</small></div></button>';
     h+='<button class="tile" style="background:#7c3aed" data-modo="ct"><div class="circ">🔁</div><div><b>Correturnos</b><small>Todos los correturnos, por escalafón</small></div></button>';
+    h+='<button class="tile" style="background:#0e7490" data-modo="pe"><div class="circ">🚐</div><div><b>Personales</b><small>Los autobuses de personal, por cocheras</small></div></button>';
     h+='<button class="tile" style="background:#be185d" data-modo="crear"><div class="circ">➕</div><div><b>Crear un grupo nuevo</b><small>Para tus compañeros</small></div></button>';
     h+='<div class="card small" style="margin-top:14px">📲 En el iPhone: pulsa el botón Compartir de Safari y elige <b>«Añadir a pantalla de inicio»</b> para usarla como una app.</div>';
   }else{
-    const t={ind:'Individual',unir:'Unirme a un grupo',crear:'Crear un grupo',ct:'Correturnos'}[LF.modo];
+    const t={ind:'Individual',unir:'Unirme a un grupo',crear:'Crear un grupo',ct:'Correturnos',pe:'Personales'}[LF.modo];
     h+='<div class="card"><button class="btn" style="margin:0 0 6px" data-modo="">‹ Volver</button><h2 style="margin:8px 0">'+t+'</h2>';
     if(LF.modo==='unir')h+='<label>Código del grupo</label><input type="text" id="lf-cod" autocapitalize="off"><label>Contraseña del grupo</label><input type="password" id="lf-pass">';
     if(LF.modo==='crear')h+='<label>Nombre del grupo</label><input type="text" id="lf-gn"><label>Contraseña</label><input type="password" id="lf-pass"><label>Repite la contraseña</label><input type="password" id="lf-pass2">';
     h+='<label>Tu nombre</label><input type="text" id="lf-nom"><label>Tu número de empleado</label><input type="tel" id="lf-id">';
-    h+='<div id="pf"></div><button class="btn fill" data-ok="1">'+(LF.modo==='ind'?'Entrar':LF.modo==='unir'?'Unirme':LF.modo==='ct'?'Entrar en Correturnos':'Crear grupo')+'</button></div>';
+    h+='<div id="pf"></div><button class="btn fill" data-ok="1">'+(LF.modo==='ind'?'Entrar':LF.modo==='unir'?'Unirme':LF.modo==='ct'?'Entrar en Correturnos':LF.modo==='pe'?'Entrar en Personales':'Crear grupo')+'</button></div>';
   }
   $('main').innerHTML=h;
   if(LF.modo)pintaForm($('pf'),LF);
@@ -220,6 +229,25 @@ function pintaForm(cont,F){
   h+='<label>'+(rsn?'Tu grupo R.S.N (primera letra de tu código)':'Tu grupo de libres')+'</label><div class="chips">'+sd.grupos.map(g=>'<button class="chip'+(P.g===g?' on':'')+'" data-fg="'+g+'">'+tg(g)+'</button>').join('')+'</div>';
   h+='<label>'+(rsn?'Resto de tu código (ej. en A1 es el 1; en AB es la B)':'Tu subgrupo')+'</label><div class="chips">'+subgruposDe(P.g||sd.grupos[0]).map(x=>'<button class="chip'+(P.t===x?' on':'')+'" data-ft="'+x+'">'+x+'</button>').join('')+'</div>';
   const ctLogin=F.modo==='ct',ctObl=ctLogin||(F===EF&&esCT()&&P.c);
+  const peMode=F.modo==='pe'||((F===EF||F===MF)&&esPE());
+  if(peMode){
+    if(F.coch===undefined)F.coch=(cocheraDe(P.pe)||{}).id||'';
+    const ca=COCHERAS.find(c=>c.id===F.coch)||null;
+    h+='<label>Tu cochera</label><div class="chips">'+COCHERAS.map(c=>'<button class="chip'+(F.coch===c.id?' on':'')+'" data-fco="'+c.id+'">'+esc(c.nombre)+'</button>').join('')+'</div>';
+    if(ca)h+='<label>Tu personal</label><div class="chips">'+ca.personales.map(p=>'<button class="chip'+(P.pe===p?' on':'')+'" data-fpe="'+esc(p)+'">'+esc(p)+'</button>').join('')+'</div>';
+    cont.innerHTML=h;
+    cont.onclick=e=>{
+      const b=e.target.closest('button');if(!b)return;
+      if(b.dataset.fs){if(b.dataset.fs!==sis){F.sis=b.dataset.fs;P.g='';P.t=''}}
+      else if(b.dataset.fg){P.g=b.dataset.fg;if(!subgruposDe(P.g).includes(P.t))P.t=''}
+      else if(b.dataset.ft)P.t=b.dataset.ft;
+      else if(b.dataset.fco){F.coch=b.dataset.fco;if(cocheraDe(P.pe)&&cocheraDe(P.pe).id!==F.coch)P.pe=''}
+      else if(b.dataset.fpe!==undefined)P.pe=b.dataset.fpe;
+      else return;
+      pintaForm(cont,F);
+    };
+    return;
+  }
   if(!ctLogin)h+='<label>¿Tienes línea asignada?</label><div class="chips"><button class="chip'+(!P.c?' on':'')+'" data-fc="0">Sí, línea fija</button><button class="chip'+(P.c?' on':'')+'" data-fc="1">Correturnos</button></div>';
   if(F===EF&&esCT()&&!P.c)h+='<div class="card small">Al guardar con línea fija saldrás de la lista de Correturnos y los que van detrás subirán un puesto.</div>';
   if(!P.c)h+='<label>Línea (opcional)</label><input type="text" id="pf-l" placeholder="Ej: 402 (la E2) o N5 (búho)" autocapitalize="characters" value="'+esc(P.l||'')+'"><label>Turno (opcional) · si eres correturnos de línea, escribe tu número y marca M o T</label><div style="display:flex;gap:8px"><input type="tel" id="pf-tu" placeholder="Ej: 5 o 023" style="flex:1" value="'+esc(P.tu||'')+'"><button class="chip'+(P.cl?' on':'')+'" data-fcl="menu" style="white-space:nowrap">Corre. Línea'+(P.cl?' '+P.cl:'')+' ▾</button></div>';
@@ -239,7 +267,7 @@ function pintaForm(cont,F){
     pintaForm(cont,F);
   };
 }
-function perfilAMiembro(P){const m={g:String(P.g),t:String(P.t),c:!!P.c};if(!P.c){if(String(P.l||'').trim())m.l=String(P.l).trim();if(/^[MT]$/.test(String(P.cl||'')))m.cl=String(P.cl);if(String(P.tu||'').trim())m.tu=String(P.tu).trim()}if(String(P.e||'').trim())m.e=String(P.e).trim();return m}
+function perfilAMiembro(P){const m={g:String(P.g),t:String(P.t),c:!!P.c};if(!P.c){if(String(P.l||'').trim())m.l=String(P.l).trim();if(/^[MT]$/.test(String(P.cl||'')))m.cl=String(P.cl);if(String(P.tu||'').trim())m.tu=String(P.tu).trim()}if(String(P.e||'').trim())m.e=String(P.e).trim();if(String(P.pe||'').trim())m.pe=String(P.pe).trim();return m}
 function validaPerfil(P){return(!P.g||!P.t)?'Elige tu grupo y tu subgrupo':null}
 function guardarGrupoEnLista(x){const l=LS.get('gruposGuardadosLC')||[];const i=l.findIndex(a=>a.codigo===x.codigo&&a.id===x.id);if(i>=0)l[i]=x;else l.push(x);LS.set('gruposGuardadosLC',l)}
 
@@ -259,6 +287,13 @@ async function enviarLogin(){
       m.c=true;await db.ref('grupos/'+CT_COD+'/miembros/'+id).set(Object.assign({n:nom,id:id},m));
       S={miID:id,miNombreCompleto:nom,modoGrupo:true,grupoActual:CT_COD,miGrupoSesion:m.g,miTipoSesion:m.t,miPerfil:m};
       guardarGrupoEnLista({codigo:CT_COD,id:id,nombre:'Correturnos',perfil:m});
+    }else if(LF.modo==='pe'){
+      if(!m.pe)return alert('Elige tu cochera y tu personal');
+      const g=(await db.ref('grupos/'+PE_COD).once('value')).val();
+      if(!g||!g.nombre)await db.ref('grupos/'+PE_COD).update({nombre:'Personales',pass:'',creador:id});
+      m.c=false;await db.ref('grupos/'+PE_COD+'/miembros/'+id).set(Object.assign({n:nom,id:id},m));
+      S={miID:id,miNombreCompleto:nom,modoGrupo:true,grupoActual:PE_COD,miGrupoSesion:m.g,miTipoSesion:m.t,miPerfil:m};
+      guardarGrupoEnLista({codigo:PE_COD,id:id,nombre:'Personales',perfil:m});
     }else if(LF.modo==='unir'){
       const cod=v('lf-cod'),pass=v('lf-pass');if(!cod||!pass)return alert('Rellena todos los campos');
       const g=(await db.ref('grupos/'+cod).once('value')).val();
@@ -286,7 +321,7 @@ async function entrarGuardado(i){
   try{
     const mm=(await db.ref('grupos/'+x.codigo+'/miembros/'+x.id).once('value')).val();
     if(!mm)return alert('Ya no estás en ese grupo (o el grupo no existe).');
-    const m={g:mm.g,t:mm.t,c:!!mm.c};if(mm.l)m.l=mm.l;if(mm.tu)m.tu=mm.tu;if(mm.cl)m.cl=mm.cl;if(mm.e)m.e=mm.e;
+    const m={g:mm.g,t:mm.t,c:!!mm.c};if(mm.l)m.l=mm.l;if(mm.tu)m.tu=mm.tu;if(mm.cl)m.cl=mm.cl;if(mm.e)m.e=mm.e;if(mm.pe)m.pe=mm.pe;
     S={miID:x.id,miNombreCompleto:mm.n||x.nombre,modoGrupo:true,grupoActual:x.codigo,miGrupoSesion:m.g,miTipoSesion:m.t,miPerfil:m};
     guardarSesion();iniciarApp();
   }catch(e){alert('No se pudo entrar: '+(e.code||e.message||e))}
@@ -294,7 +329,7 @@ async function entrarGuardado(i){
 $('main').addEventListener('click',e=>{
   if(S)return;
   const b=e.target.closest('button');if(!b)return;
-  if(b.dataset.modo!==undefined){LF.modo=b.dataset.modo||null;LF.P={g:'',t:'',c:b.dataset.modo==='ct',l:'',tu:'',e:''};LF.sis='C';pantallaLogin()}
+  if(b.dataset.modo!==undefined){LF.modo=b.dataset.modo||null;LF.P={g:'',t:'',c:b.dataset.modo==='ct',l:'',tu:'',e:'',pe:''};LF.sis='C';pantallaLogin()}
   else if(b.dataset.ok)enviarLogin();
   else if(b.dataset.ent!==undefined)entrarGuardado(+b.dataset.ent);
   else if(b.dataset.del!==undefined){if(confirm('¿Quitar este grupo de la lista?')){const l=LS.get('gruposGuardadosLC')||[];l.splice(+b.dataset.del,1);LS.set('gruposGuardadosLC',l);pantallaLogin()}}
@@ -467,8 +502,8 @@ function abrirPanelDia(y,m,d){
   h+='<div style="margin:2px 0 6px"><span class="pill">'+(libre?'🏠 Libras':'🚌 Trabajas')+'</span>'+(f?'<span class="pill" style="background:#fee2e2;color:#991b1b">🎉 '+esc(f.nombre)+'</span>':'')+(c?'<span class="pill">'+esc(c.texto||c.clase)+'</span>':'')+'</div>';
   if(nota)h+='<div class="pf">📝 '+esc(nota.texto||'')+'</div>';
   if(S.modoGrupo&&miembros.length){
-    const q=quienesEseDia(y,m,d),num=p=>/^\d+$/.test(String(p.e||''))?+p.e:1e9,ord=a=>esCT()?a.slice().sort((a,b)=>num(a)-num(b)):a;
-    const li=a=>a.length?ord(a).map(p=>'<div class="pf"><b>'+esc(p.n)+'</b><small>'+(esCT()?'Emp. '+esc(p.id)+' · ':'')+esc(textoPerfil(p))+'</small></div>').join(''):'<div class="small">Ninguno</div>';
+    const q=quienesEseDia(y,m,d),num=p=>/^\d+$/.test(String(p.e||''))?+p.e:1e9,ord=a=>esCT()?a.slice().sort((a,b)=>num(a)-num(b)):esPE()?a.slice().sort((a,b)=>ordenPersonal(a.pe)-ordenPersonal(b.pe)):a;
+    const li=a=>a.length?ord(a).map(p=>'<div class="pf"><b>'+esc(p.n)+'</b><small>'+((esCT()||esPE())?'Emp. '+esc(p.id)+' · ':'')+esc(textoPerfil(p))+'</small></div>').join(''):'<div class="small">Ninguno</div>';
     h+='<div class="ps" style="color:#ef4444">🏠 LIBRAN ('+q.libran.length+')</div>'+li(q.libran)+'<div class="ps" style="color:#3b82f6">🚌 TRABAJAN ('+q.trab.length+')</div>'+li(q.trab);
   }
   h+='</div><button class="btn fill" data-pmenu="1">✏️ Marcar / cambios y más</button><div class="small" style="text-align:center;margin-top:6px">Mantén pulsado un día para abrir estas opciones directamente</div>';
@@ -686,7 +721,27 @@ async function marcarDia(y,m,d,clase){
 }
 
 // --- Compañeros ---
-let CTQ='';
+let CTQ='',PEQ='',PEC='',PEP='';
+function pintaPE(){
+  const cont=$('pelista');if(!cont)return;
+  const hoy=new Date(),y=hoy.getFullYear(),m=hoy.getMonth(),d=hoy.getDate();
+  let L=miembros.slice().sort((a,b)=>ordenPersonal(a.pe)-ordenPersonal(b.pe)||String(a.n).localeCompare(String(b.n)));
+  if(PEQ)L=L.filter(p=>String(p.id||'').indexOf(PEQ)>=0);
+  if(PEC)L=L.filter(p=>(cocheraDe(p.pe)||{}).id===PEC);
+  if(PEP)L=L.filter(p=>p.pe===PEP);
+  const chip=(on,att,txt)=>'<button class="chip'+(on?' on':'')+'" '+att+' style="margin:0 6px 6px 0">'+esc(txt)+'</button>';
+  let h='<div class="chips" style="flex-wrap:wrap">'+chip(!PEC,'data-pc=""','Todas')+COCHERAS.map(c=>chip(PEC===c.id,'data-pc="'+c.id+'"',c.nombre)).join('')+'</div>';
+  const ca=COCHERAS.find(c=>c.id===PEC);
+  if(ca)h+='<div class="chips" style="flex-wrap:wrap">'+chip(!PEP,'data-pp=""','Todos')+ca.personales.map(p=>chip(PEP===p,'data-pp="'+esc(p)+'"',p)).join('')+'</div>';
+  h+='<div class="small" style="margin:0 0 8px">'+miembros.length+' personales en la app'+((PEQ||PEC||PEP)?' · '+L.length+' resultado'+(L.length===1?'':'s'):'')+'</div>';
+  if(!L.length)h+='<div class="card small">'+(miembros.length?'Nadie con esos filtros todavía.':'Cargando…')+'</div>';
+  h+=L.map(p=>{const cam=p.id===S.miID?cambios:(cambiosTodos[p.id]||{}),libre=esLibreFinal(y,p.g,p.t,m,d,cam);
+    return '<div class="fila'+(p.id===S.miID?' yo':'')+'" data-p="'+esc(p.id)+'"><div class="ico'+(libre?' libre':'')+'">'+(libre?'🏠':'🚌')+'</div><div class="t"><b>'+esc(p.n)+(p.id===S.miID?' (yo)':'')+'</b><div>Emp. '+esc(p.id)+' · '+esc(textoPersonal(p.pe))+' · '+esc(etiquetaGrupo(p.g,p.t))+' · hoy '+(libre?'libra':'trabaja')+'</div></div><div style="font-size:20px">📅</div></div>'}).join('');
+  cont.innerHTML=h;
+  cont.onclick=e=>{const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.pc!==undefined){PEC=b.dataset.pc;PEP='';pintaPE()}
+    else if(b.dataset.pp!==undefined){PEP=b.dataset.pp;pintaPE()}};
+}
 function pintaCT(){
   const cont=$('ctlista');if(!cont)return;
   const hoy=new Date(),y=hoy.getFullYear(),m=hoy.getMonth(),d=hoy.getDate(),num=p=>/^\d+$/.test(String(p.e||''))?+p.e:1e9;
@@ -702,6 +757,12 @@ function vComp(){
   const hoy=new Date(),y=hoy.getFullYear(),m=hoy.getMonth(),d=hoy.getDate();
   let h='<div class="sec">Hoy es '+DSEM[hoy.getDay()]+', '+d+' de '+MESES[m]+'</div>';
   if(!S.modoGrupo){h+='<div class="card small">Estás en modo individual. Para ver a tus compañeros, cierra sesión y entra o crea un grupo.</div>';$('main').innerHTML=h;return}
+  if(esPE()){
+    const nuevo=!$('peq')||$('main').dataset.t!=='comp';
+    if(nuevo){$('main').innerHTML=h+'<input type="tel" id="peq" placeholder="🔎 Buscar por número de empleado" style="display:block;width:100%;padding:12px;font-size:16px;margin:4px auto 10px;border:2px solid var(--bord);background:var(--inp);color:var(--text);border-radius:14px;box-sizing:border-box" value="'+esc(PEQ)+'"><div id="pelista"></div>';
+      $('peq').addEventListener('input',()=>{PEQ=$('peq').value.replace(/\D/g,'');pintaPE()})}
+    pintaPE();return;
+  }
   if(esCT()){
     const nuevo=!$('ctq')||$('main').dataset.t!=='comp';
     if(nuevo){$('main').innerHTML=h+'<input type="tel" id="ctq" placeholder="🔎 Buscar por número de empleado" style="display:block;width:100%;padding:12px;font-size:16px;margin:4px auto 10px;border:2px solid var(--bord);background:var(--inp);color:var(--text);border-radius:14px;box-sizing:border-box" value="'+esc(CTQ)+'"><div id="ctlista"></div>';
@@ -740,6 +801,7 @@ function vGru(){
 function vAj(){
   let h='<div class="card"><b>'+esc(S.miNombreCompleto)+'</b><div class="small">Nº empleado '+esc(S.miID)+'</div><div style="margin-top:8px">'+esc(textoPerfil(S.miPerfil||{g:S.miGrupoSesion,t:S.miTipoSesion}))+'</div><button class="btn fill" data-aj="perfil">✏️ Editar mi perfil</button><div class="small" style="margin-top:6px">Si te cambian de grupo de libres, cámbialo aquí: el calendario se actualiza desde el 1 de enero.</div></div>';
   if(esCT())h+='<div class="card"><b>🔁 Correturnos</b><div class="small" style="margin-top:6px">Grupo abierto. Si cambias tu perfil a línea fija, saldrás de la lista y los que van detrás subirán un puesto.</div></div>';
+  else if(esPE())h+='<div class="card"><b>🚐 Personales</b><div class="small" style="margin-top:6px">Grupo abierto con todas las cocheras. Si cambias de personal, cámbialo en «Editar mi perfil».</div></div>';
   else if(S.modoGrupo)h+='<div class="card"><b>👥 Grupo</b><div class="small" style="word-break:break-all">Código: '+esc(S.grupoActual)+'</div><button class="btn fill" data-aj="grupo">✏️ Editar grupo</button><div class="small" style="margin-top:6px">Añade a compañeros que no usan la app o corrige sus datos.</div></div>';
   h+='<div class="card"><div style="font-weight:800">💾 Copia de seguridad</div><div class="small" style="margin:4px 0 8px">Guarda tus cambios, historial y notas donde quieras, y restáuralos cuando lo necesites.</div><button class="btn" data-aj="copia" style="margin-top:0">Guardar copia</button><button class="btn" data-aj="restaurar" style="background:#64748b">Restaurar</button></div>';
   h+='<div class="card"><button class="btn" data-aj="dark" style="margin-top:0">'+(document.body.classList.contains('dark')?'☀️ Modo claro':'🌙 Modo oscuro')+'</button><button class="btn red" data-aj="salir">🚪 Cerrar sesión</button></div>';
@@ -857,7 +919,7 @@ async function editarGrupo(){
 }
 function formMiembro(id){
   const p=id===null?{}:(miembros.find(x=>x.id===id)||{});
-  MF={orig:id,P:{g:p.g||'',t:p.t||'',c:!!p.c,l:p.l||'',tu:p.tu||'',cl:p.cl||'',e:p.e||''},sis:'C'};
+  MF={orig:id,P:{g:p.g||'',t:p.t||'',c:!!p.c,l:p.l||'',tu:p.tu||'',cl:p.cl||'',e:p.e||'',pe:p.pe||''},sis:'C'};
   modal('<h2>'+(id===null?'Añadir persona':'Editar persona')+'</h2><label>Nombre</label><input type="text" id="me-n" value="'+esc(p.n||'')+'"><label>Número de empleado</label><input type="tel" id="me-id" value="'+esc(p.id||'')+'"><div id="pf3"></div><button class="btn fill" id="me-ok">Guardar</button><button class="btn" id="me-cancel">Cancelar</button>');
   pintaForm($('pf3'),MF);
   $('modalc').onclick=null;
@@ -895,7 +957,7 @@ async function eliminarGrupo(){
   }catch(e){alert('No se pudo borrar el grupo: '+(e.code||e.message||e))}
 }
 function editarPerfil(){
-  const p=S.miPerfil||{};EF={P:{g:p.g||S.miGrupoSesion,t:p.t||S.miTipoSesion,c:!!p.c,l:p.l||'',tu:p.tu||'',cl:p.cl||'',e:p.e||''},sis:'C'};
+  const p=S.miPerfil||{};EF={P:{g:p.g||S.miGrupoSesion,t:p.t||S.miTipoSesion,c:!!p.c,l:p.l||'',tu:p.tu||'',cl:p.cl||'',e:p.e||'',pe:p.pe||''},sis:'C'};
   modal('<h2>Mi perfil</h2><div id="pf2"></div><button class="btn fill" id="pf-ok">Guardar</button><button class="btn" onclick="cerrarModal()">Cancelar</button>');
   pintaForm($('pf2'),EF);
   $('pf-ok').onclick=guardarPerfil;
@@ -912,6 +974,7 @@ async function salirCT(m){
 async function guardarPerfil(){
   const err=validaPerfil(EF.P);if(err)return alert(err);
   const m=perfilAMiembro(EF.P);
+  if(esPE()&&!m.pe)return alert('En Personales tienes que elegir tu cochera y tu personal');
   if(esCT()&&m.c&&!/^\d+$/.test(String(m.e||'')))return alert('Escribe tu escalafón en la empresa (solo el número)');
   if(esCT()&&!m.c){try{await salirCT(m)}catch(e){alert('No se pudo guardar: '+(e.code||e.message||e))}return}
   try{
