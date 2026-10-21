@@ -38,6 +38,15 @@
     ],
     "runtimeVersion": {
       "policy": "appVersion"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f58b5000-5991-477f-bb69-1c8707f428bd"
+      }
+    },
+    "owner": "curro888",
+    "updates": {
+      "url": "https://u.expo.dev/f58b5000-5991-477f-bb69-1c8707f428bd"
     }
   }
 }
