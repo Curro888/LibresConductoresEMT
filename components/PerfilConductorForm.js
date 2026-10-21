@@ -98,7 +98,7 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
                 ))}
                 {permitePersonales && !soloPersonales && (
                     <TouchableOpacity style={[s.btnAncho, abrePE && s.btnActivo]} onPress={() => { Keyboard.dismiss(); if (abrePE) set('pe', ''); setAbrePE(!abrePE); }}>
-                        <Text style={[s.btnTexto, abrePE && s.btnTextoActivo]}>🚐 Personales</Text>
+                        <Text style={[s.btnTexto, abrePE && s.btnTextoActivo]}>Personales</Text>
                     </TouchableOpacity>
                 )}
             </View>

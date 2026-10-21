@@ -317,7 +317,7 @@ export default function LoginScreen({ navigation }) {
                         <Text style={s.btnGrandeTexto}>🔁 Correturnos</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[s.btnGrande, { marginTop: 8 }]} onPress={() => setModo('personales')}>
-                        <Text style={s.btnGrandeTexto}>🚐 Personales</Text>
+                        <Text style={s.btnGrandeTexto}>Personales</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[s.btnGrande, { marginTop: 8, borderColor: '#94a3b8' }]} onPress={() => setModo('individual')}>
                         <Text style={[s.btnGrandeTexto, { color: '#64748b' }]}>👤 Individual</Text>
@@ -340,7 +340,7 @@ export default function LoginScreen({ navigation }) {
                         <Text style={s.btnGrandeSubtexto}>Todos los correturnos, por escalafón</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[s.btnGrande, { marginTop: 12 }]} onPress={() => setModo('personales')}>
-                        <Text style={s.btnGrandeTexto}>🚐 Personales</Text>
+                        <Text style={s.btnGrandeTexto}>Personales</Text>
                         <Text style={s.btnGrandeSubtexto}>Los autobuses de personal, por cocheras</Text>
                     </TouchableOpacity>
                 </View>
@@ -381,7 +381,7 @@ export default function LoginScreen({ navigation }) {
 
             {modo === 'personales' && (
                 <View style={s.card}>
-                    <Text style={s.cardTitulo}>🚐 Personales</Text>
+                    <Text style={s.cardTitulo}>Personales</Text>
                     <Text style={s.label}>Tu nombre</Text>
                     <TextInput style={s.input} placeholder="Ej: Curro" value={peNombre} onChangeText={setPeNombre} />
                     <Text style={s.label}>Tu número de empleado</Text>

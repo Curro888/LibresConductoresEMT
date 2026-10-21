@@ -254,10 +254,10 @@ export default function GruposScreen({ navigation }) {
                                 </TouchableOpacity>
                             ))}
                             <TouchableOpacity style={[sc.turnoTab, verPersonales && sc.turnoTabActive]} onPress={() => { setVerPersonales(true); setSistemaTab('C'); setTurnoTab('A'); setGrupoSeleccionado(null); }}>
-                                <Text style={[sc.turnoTabTexto, verPersonales && sc.turnoTabTextoActive]}>🚐 Personales</Text>
+                                <Text style={[sc.turnoTabTexto, verPersonales && sc.turnoTabTextoActive]}>Personales</Text>
                             </TouchableOpacity>
                         </ScrollView>
-                        {verPersonales && <Text style={{ fontSize: 12, color: '#7c3aed', paddingHorizontal: 12, paddingBottom: 6 }}>🚐 Los personales libran con los mismos grupos de Convencional: elige tu grupo y subgrupo.</Text>}
+                        {verPersonales && <Text style={{ fontSize: 12, color: '#7c3aed', paddingHorizontal: 12, paddingBottom: 6 }}>Los personales libran con los mismos grupos de Convencional: elige tu grupo y subgrupo.</Text>}
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={sc.turnoTabsScroll}>
                             {subgruposDe(sistemaActual.grupos[0]).map(t => (
                                 <TouchableOpacity key={t} style={[sc.turnoTab, turnoTab === t && sc.turnoTabActive]} onPress={() => { setTurnoTab(t); setGrupoSeleccionado(null); }}>
