@@ -31,6 +31,7 @@ export default function GruposScreen({ navigation }) {
     const [tab, setTab] = useState('grupos'); // grupos | info
     const [turnoTab, setTurnoTab] = useState('A'); // subgrupo seleccionado
     const [sistemaTab, setSistemaTab] = useState('C'); // C = convencional, B = búhos, R = R.S.N
+    const [verPersonales, setVerPersonales] = useState(false); // los personales libran con los grupos de convencional
     const sistemaActual = SISTEMAS_CONDUCTORES.find(x => x.id === sistemaTab) || SISTEMAS_CONDUCTORES[0];
     const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
     const [anio, setAnio] = useState(anioInicial());
@@ -248,11 +249,15 @@ export default function GruposScreen({ navigation }) {
                     <View style={sc.controlesCol}>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={sc.turnoTabsScroll}>
                             {SISTEMAS_CONDUCTORES.map(x => (
-                                <TouchableOpacity key={x.id} style={[sc.turnoTab, sistemaTab === x.id && sc.turnoTabActive]} onPress={() => { setSistemaTab(x.id); setTurnoTab('A'); setGrupoSeleccionado(null); }}>
-                                    <Text style={[sc.turnoTabTexto, sistemaTab === x.id && sc.turnoTabTextoActive]}>{x.nombre}</Text>
+                                <TouchableOpacity key={x.id} style={[sc.turnoTab, sistemaTab === x.id && !verPersonales && sc.turnoTabActive]} onPress={() => { setVerPersonales(false); setSistemaTab(x.id); setTurnoTab('A'); setGrupoSeleccionado(null); }}>
+                                    <Text style={[sc.turnoTabTexto, sistemaTab === x.id && !verPersonales && sc.turnoTabTextoActive]}>{x.nombre}</Text>
                                 </TouchableOpacity>
                             ))}
+                            <TouchableOpacity style={[sc.turnoTab, verPersonales && sc.turnoTabActive]} onPress={() => { setVerPersonales(true); setSistemaTab('C'); setTurnoTab('A'); setGrupoSeleccionado(null); }}>
+                                <Text style={[sc.turnoTabTexto, verPersonales && sc.turnoTabTextoActive]}>🚐 Personales</Text>
+                            </TouchableOpacity>
                         </ScrollView>
+                        {verPersonales && <Text style={{ fontSize: 12, color: '#7c3aed', paddingHorizontal: 12, paddingBottom: 6 }}>🚐 Los personales libran con los mismos grupos de Convencional: elige tu grupo y subgrupo.</Text>}
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={sc.turnoTabsScroll}>
                             {subgruposDe(sistemaActual.grupos[0]).map(t => (
                                 <TouchableOpacity key={t} style={[sc.turnoTab, turnoTab === t && sc.turnoTabActive]} onPress={() => { setTurnoTab(t); setGrupoSeleccionado(null); }}>
