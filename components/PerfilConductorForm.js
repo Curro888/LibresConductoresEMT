@@ -96,6 +96,11 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
                         <Text style={[s.btnTexto, sis === x.id && s.btnTextoActivo]}>{x.nombre}</Text>
                     </TouchableOpacity>
                 ))}
+                {permitePersonales && !soloPersonales && (
+                    <TouchableOpacity style={[s.btnAncho, abrePE && s.btnActivo]} onPress={() => { Keyboard.dismiss(); if (abrePE) set('pe', ''); setAbrePE(!abrePE); }}>
+                        <Text style={[s.btnTexto, abrePE && s.btnTextoActivo]}>🚐 Personales</Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
             <Text style={s.label}>{esRsn ? 'Tu grupo R.S.N (primera letra de tu código)' : 'Tu grupo de libres'}</Text>
@@ -115,17 +120,6 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
                     </TouchableOpacity>
                 ))}
             </View>
-
-            {permitePersonales && !soloPersonales && (
-                <View>
-                    <Text style={s.label}>¿Vas en personal? (el autobús que te lleva y te trae)</Text>
-                    <View style={s.grid}>
-                        <TouchableOpacity style={[s.btnAncho, abrePE && s.btnActivo]} onPress={() => { Keyboard.dismiss(); if (abrePE) set('pe', ''); setAbrePE(!abrePE); }}>
-                            <Text style={[s.btnTexto, abrePE && s.btnTextoActivo]}>🚐 Personales</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            )}
 
             {mostrarPE && (
                 <View>
