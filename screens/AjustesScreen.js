@@ -26,6 +26,8 @@ export default function AjustesScreen({ navigation }) {
     const [editPerfil, setEditPerfil] = useState(PERFIL_VACIO);
     const [fotoPerfil, setFotoPerfil] = useState(null);
     const [alerta14, setAlerta14] = useState(true);
+    const [modalPE, setModalPE] = useState(false);
+    const [pePerfil, setPePerfil] = useState(PERFIL_VACIO);
     useEffect(() => { alerta14Activada().then(setAlerta14); }, []);
 
     useEffect(() => {
@@ -62,6 +64,58 @@ export default function AjustesScreen({ navigation }) {
         const base64 = 'data:image/jpeg;base64,' + comprimida.base64;
         setFotoPerfil(base64);
         await AsyncStorage.setItem('fotoPerfil', base64);
+    }
+
+    // Entrar en Personales desde la app ya iniciada (p. ej. un correturnos que coge plaza de personal).
+    async function entrarEnPersonales() {
+        if (!sesion || !sesion.miID) return;
+        const err = validarPerfil(pePerfil);
+        if (err) { Alert.alert('⚠️', err); return; }
+        if (!pePerfil.pe) { Alert.alert('⚠️', 'Elige tu cochera y tu personal'); return; }
+        const m = perfilAMiembro({ ...pePerfil, c: false });
+        const nombre = (editNombre || sesion.miNombreCompleto || '').trim();
+        if (!nombre) { Alert.alert('⚠️', 'El nombre no puede estar vacío.'); return; }
+        try {
+            const cambios = {};
+            const snapPE = await get(ref(db, 'grupos/PE'));
+            if (!(snapPE.val() || {}).nombre) {
+                cambios['grupos/PE/nombre'] = 'Personales';
+                cambios['grupos/PE/pass'] = '';
+                cambios['grupos/PE/creador'] = sesion.miID;
+            }
+            cambios['grupos/PE/miembros/' + sesion.miID] = { n: nombre, id: sesion.miID, ...m };
+            // Si estaba en Correturnos, sale de la lista y los que iban detrás suben un puesto.
+            const enCT = !!(sesion.modoGrupo && sesion.grupoActual === 'CT');
+            if (enCT) {
+                const snap = await get(ref(db, 'grupos/CT/miembros'));
+                const todos = snap.val() || {};
+                const miE = parseInt((todos[sesion.miID] || {}).e, 10);
+                cambios['grupos/CT/miembros/' + sesion.miID] = null;
+                cambios['presencia/CT/' + sesion.miID] = null;
+                if (!isNaN(miE)) {
+                    Object.keys(todos).forEach(k => {
+                        if (k === sesion.miID) return;
+                        const e = parseInt((todos[k] || {}).e, 10);
+                        if (!isNaN(e) && e > miE) cambios['grupos/CT/miembros/' + k + '/e'] = String(e - 1);
+                    });
+                }
+            }
+            await update(ref(db), cambios);
+            const raw = await AsyncStorage.getItem('misGrupos2026');
+            let lista = raw ? JSON.parse(raw) : [];
+            if (enCT) lista = lista.filter(g => g.codigo !== 'CT');
+            const entrada = { codigo: 'PE', id: sesion.miID, nombre, tipo: m.t, grupoLibres: m.g, perfil: m };
+            const i = lista.findIndex(g => g.codigo === 'PE');
+            if (i >= 0) lista[i] = entrada; else lista.push(entrada);
+            await AsyncStorage.setItem('misGrupos2026', JSON.stringify(lista));
+            const nueva = { miID: sesion.miID, miNombreCompleto: nombre, modoGrupo: true, grupoActual: 'PE', miGrupoSesion: m.g, miTipoSesion: m.t, miPerfil: m };
+            await AsyncStorage.setItem('sesion2026', JSON.stringify(nueva));
+            setModalPE(false);
+            Alert.alert('✅ Ya estás en Personales', 'Puedes volver a tu otro grupo desde la pantalla de entrada (Cerrar sesión).');
+            navigation.replace('Main', nueva);
+        } catch (e) {
+            Alert.alert('⚠️', 'No se pudo entrar en Personales (¿sin conexión?). Inténtalo de nuevo con internet.');
+        }
     }
 
     async function guardarPerfil() {
@@ -294,6 +348,19 @@ export default function AjustesScreen({ navigation }) {
                     </View>
                 </View>
 
+                {/* Entrar en Personales */}
+                {sesion && sesion.miID && !(sesion.modoGrupo && sesion.grupoActual === 'PE') && (
+                    <TouchableOpacity style={s.card} onPress={() => { setPePerfil({ ...editPerfil, c: false, pe: '' }); setModalPE(true); }}>
+                        <View style={s.filaSwitch}>
+                            <View style={{ flex: 1, paddingRight: 12 }}>
+                                <Text style={s.cardTitulo}>🚐 Entrar en Personales</Text>
+                                <Text style={s.cardSub}>Si has cogido plaza en un personal, entra directamente desde aquí</Text>
+                            </View>
+                            <Text style={s.flecha}>▶</Text>
+                        </View>
+                    </TouchableOpacity>
+                )}
+
                 {/* Estadísticas */}
                 <TouchableOpacity style={s.card} onPress={() => setMostrarStats(!mostrarStats)}>
                     <View style={s.filaSwitch}>
@@ -431,6 +498,31 @@ export default function AjustesScreen({ navigation }) {
                             </TouchableOpacity>
                             <TouchableOpacity style={s.btnGuardarModal} onPress={guardarPerfil}>
                                 <Text style={s.btnGuardarModalTexto}>Guardar</Text>
+                            </TouchableOpacity>
+                        </View>
+                      </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Modal entrar en Personales */}
+            <Modal visible={modalPE} transparent animationType="slide" onRequestClose={() => setModalPE(false)}>
+                <View style={s.overlayBottom}>
+                    <View style={[s.modalCard, { maxHeight: '92%' }]}>
+                      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                        <Text style={s.modalTitulo}>🚐 Entrar en Personales</Text>
+                        <PerfilConductorForm value={pePerfil} onChange={setPePerfil} soloPersonales />
+                        {!!(sesion && sesion.modoGrupo && sesion.grupoActual === 'CT') && (
+                            <Text style={{ fontSize: 12, color: '#b45309', marginTop: 8 }}>
+                                Al entrar saldrás de la lista de Correturnos y los que van detrás subirán un puesto.
+                            </Text>
+                        )}
+                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 20 }}>
+                            <TouchableOpacity style={s.btnCancelarModal} onPress={() => setModalPE(false)}>
+                                <Text style={s.btnCancelarModalTexto}>Cancelar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={s.btnGuardarModal} onPress={entrarEnPersonales}>
+                                <Text style={s.btnGuardarModalTexto}>Entrar</Text>
                             </TouchableOpacity>
                         </View>
                       </ScrollView>
