@@ -5,6 +5,7 @@ import {
     KeyboardAvoidingView, Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { actualizarWidget } from '../widget/actualizarWidget';
 import { useFocusEffect } from '@react-navigation/native';
 import { db } from '../config/firebase';
 import { ref, onValue, set, remove, update, push, get } from 'firebase/database';
@@ -86,7 +87,12 @@ export default function CalendarioScreen({ navigation, route }) {
             if (raw) {
                 const s = JSON.parse(raw);
                 setSesion(s);
-                unsubCambios = onValue(ref(db, 'cambios/' + s.miID), snap => setCambios(snap.val() || {}));
+                unsubCambios = onValue(ref(db, 'cambios/' + s.miID), snap => {
+                    const v = snap.val() || {};
+                    setCambios(v);
+                    // Copia para el widget del móvil
+                    AsyncStorage.setItem('widgetCambios', JSON.stringify(v)).then(() => actualizarWidget()).catch(() => {});
+                });
                 unsubNotas = onValue(ref(db, 'notas/' + s.miID), snap => setNotas(snap.val() || {}));
                 unsubCambiosTodos = onValue(ref(db, 'cambios'), snap => setCambiosTodos(snap.val() || {}));
                 // Cargar modoGenerado si viene del historial
