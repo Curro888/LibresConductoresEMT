@@ -18,7 +18,7 @@ import EstadisticasScreen from './screens/EstadisticasScreen';
 import WebEMTScreen from './screens/WebEMTScreen';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { db, auth } from './config/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, goOnline, goOffline } from 'firebase/database';
 import { signInAnonymously } from 'firebase/auth';
 import { registerForPushNotificationsAsync, addNotificationListeners, programarAlerta14 } from './services/notifications'; // push
 import { APP_VERSION } from './config/version';
@@ -111,6 +111,17 @@ function MainTabs({ route }) {
             if (estado === 'active') {
                 Notifications.dismissAllNotificationsAsync().catch(() => {});
             }
+        });
+        return () => listener.remove();
+    }, []);
+
+    // Ahorra conexiones de Firebase: al pasar a segundo plano se desconecta y al volver se reconecta
+    useEffect(() => {
+        const listener = AppState.addEventListener('change', (estado) => {
+            try {
+                if (estado === 'background') goOffline(db);
+                else if (estado === 'active') goOnline(db);
+            } catch (e) {}
         });
         return () => listener.remove();
     }, []);
