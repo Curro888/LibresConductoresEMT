@@ -124,7 +124,7 @@ export async function programarRecordatorioSolicitudes(pendientes) {
   }
 }
 
-// Alerta mensual: el día 14 a las 22:00, último día para pedir el cobro de días (hasta el 15 a las 23:59).
+// Alerta mensual: el día 14 entre las 21:30 y las 22:30 (minuto al azar fijo por móvil, para repartir las conexiones), último día para pedir el cobro de días (hasta el 15 a las 23:59).
 // Se programan los próximos 12 meses en el propio móvil (sin internet) y se recalculan cada vez que se abre la app.
 // Se puede desactivar en Ajustes (se guarda en 'alerta14').
 const ALERTA14_IDS = Array.from({ length: 12 }, (_, i) => 'alerta14-' + i);
@@ -134,6 +134,17 @@ export async function alerta14Activada() {
 export async function activarAlerta14(activa) {
   try { await AsyncStorage.setItem('alerta14', activa ? '1' : '0'); } catch (e) {}
   return programarAlerta14();
+}
+// Minuto al azar (0-59) para repartir los avisos entre 21:30 y 22:29; se elige una vez y se recuerda
+async function minutoAlerta14() {
+  try {
+    const g = await AsyncStorage.getItem('alerta14_min');
+    const v = parseInt(g, 10);
+    if (!isNaN(v) && v >= 0 && v < 60) return v;
+    const nuevo = Math.floor(Math.random() * 60);
+    await AsyncStorage.setItem('alerta14_min', String(nuevo));
+    return nuevo;
+  } catch (e) { return 30; }
 }
 export async function programarAlerta14() {
   try {
@@ -153,9 +164,10 @@ export async function programarAlerta14() {
       });
     }
     const ahora = new Date();
+    const minAzar = await minutoAlerta14();
     let n = 0;
     for (let i = 0; i < 14 && n < ALERTA14_IDS.length; i++) {
-      const cuando = new Date(ahora.getFullYear(), ahora.getMonth() + i, 14, 22, 0, 0, 0);
+      const cuando = new Date(ahora.getFullYear(), ahora.getMonth() + i, 14, 21, 30 + minAzar, 0, 0);
       if (cuando.getTime() <= Date.now() + 60 * 1000) continue;
       await Notifications.scheduleNotificationAsync({
         identifier: ALERTA14_IDS[n++],
