@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import { pedirDia, leerEnlaceDia } from './widget/abrirDia';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -163,6 +164,8 @@ function MainTabs({ route }) {
     );
 }
 
+const navigationRef = createNavigationContainerRef();
+
 function AppContent() {
     const [loading, setLoading] = useState(true);
     const [sesionInicial, setSesionInicial] = useState(null);
@@ -186,6 +189,19 @@ function AppContent() {
         cargarSesion();
     }, []);
 
+    // Toque en un día del widget: abrir el calendario en ese día
+    useEffect(() => {
+        const alAbrirEnlace = (url) => {
+            const dia = leerEnlaceDia(url);
+            if (!dia) return;
+            try { if (navigationRef.isReady()) navigationRef.navigate('Turnos'); } catch (e) {}
+            pedirDia(dia);
+        };
+        Linking.getInitialURL().then(alAbrirEnlace).catch(() => {});
+        const sub = Linking.addEventListener('url', (e) => alAbrirEnlace(e.url));
+        return () => sub.remove();
+    }, []);
+
     if (loading) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.headerFondo }}>
@@ -195,7 +211,7 @@ function AppContent() {
     }
 
     return (
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
             <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={sesionInicial ? 'Main' : 'Login'}>
                 <Stack.Screen name="Login" component={LoginScreen} />
                 <Stack.Screen name="CalendarioCompanero" component={CalendarioCompaneroScreen} />

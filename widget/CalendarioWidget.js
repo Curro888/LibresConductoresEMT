@@ -1,12 +1,13 @@
 import React from 'react';
-import { FlexWidget, TextWidget } from 'react-native-android-widget';
+import { FlexWidget, ListWidget, TextWidget } from 'react-native-android-widget';
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const LETRAS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+const ESQUEMA = 'libresconductores';
+const ALTO_FILA = 30;
 
-// data = { anio, mIdx, hoy, celdas: [{ d, bg, fg, borde }] , primerDia }
-export function CalendarioWidget({ data }) {
-  const { anio, mIdx, hoy, primerDia, dias, estilos } = data;
+function Mes({ mes }) {
+  const { anio, mIdx, hoy, primerDia, dias, estilos } = mes;
   const filas = [];
   let fila = [];
   for (let i = 0; i < primerDia; i++) fila.push(null);
@@ -19,13 +20,12 @@ export function CalendarioWidget({ data }) {
   return (
     <FlexWidget
       clickAction="OPEN_APP"
-      style={{ height: 'match_parent', width: 'match_parent', backgroundColor: '#1e1b4b', borderRadius: 16, padding: 8, flexDirection: 'column' }}
+      style={{ width: 'match_parent', flexDirection: 'column', paddingHorizontal: 6, paddingVertical: 4 }}
     >
-      <TextWidget
-        text={MESES[mIdx] + ' ' + anio}
-        style={{ fontSize: 15, fontWeight: 'bold', color: '#ffffff', textAlign: 'center', width: 'match_parent' }}
-      />
-      <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', marginTop: 4 }}>
+      <FlexWidget style={{ width: 'match_parent', height: 24, alignItems: 'center', justifyContent: 'center' }}>
+        <TextWidget text={MESES[mIdx] + ' ' + anio} style={{ fontSize: 15, fontWeight: 'bold', color: '#ffffff' }} />
+      </FlexWidget>
+      <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', height: 18 }}>
         {LETRAS.map(l => (
           <FlexWidget key={l} style={{ flex: 1, alignItems: 'center' }}>
             <TextWidget text={l} style={{ fontSize: 11, color: '#a5b4fc', fontWeight: 'bold' }} />
@@ -33,17 +33,17 @@ export function CalendarioWidget({ data }) {
         ))}
       </FlexWidget>
       {filas.map((f, i) => (
-        <FlexWidget key={i} style={{ flexDirection: 'row', width: 'match_parent', flex: 1 }}>
+        <FlexWidget key={i} style={{ flexDirection: 'row', width: 'match_parent', height: ALTO_FILA }}>
           {f.map((d, j) => {
-            if (!d) return <FlexWidget key={j} style={{ flex: 1 }} />;
+            if (!d) return <FlexWidget key={j} style={{ flex: 1, height: ALTO_FILA }} />;
             const st = estilos[d] || { bg: '#f1f5f9', fg: '#334155' };
             const esHoy = hoy === d;
             return (
               <FlexWidget
                 key={j}
                 clickAction="OPEN_URI"
-                clickActionData={{ uri: 'libresconductores://dia/' + anio + '/' + mIdx + '/' + d }}
-                style={{ flex: 1, height: 'match_parent', padding: 1 }}
+                clickActionData={{ uri: ESQUEMA + '://dia/' + anio + '/' + mIdx + '/' + d }}
+                style={{ flex: 1, height: ALTO_FILA, padding: 1 }}
               >
                 <FlexWidget
                   style={{
@@ -60,5 +60,15 @@ export function CalendarioWidget({ data }) {
         </FlexWidget>
       ))}
     </FlexWidget>
+  );
+}
+
+export function CalendarioWidget({ data }) {
+  return (
+    <ListWidget
+      style={{ height: 'match_parent', width: 'match_parent', backgroundColor: '#1e1b4b', borderRadius: 16 }}
+    >
+      {data.meses.map(m => <Mes key={m.anio + '-' + m.mIdx} mes={m} />)}
+    </ListWidget>
   );
 }

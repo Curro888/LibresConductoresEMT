@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { actualizarWidget } from '../widget/actualizarWidget';
+import { tomarDiaPendiente, oirDia } from '../widget/abrirDia';
 import { useFocusEffect } from '@react-navigation/native';
 import { db } from '../config/firebase';
 import { ref, onValue, set, remove, update, push, get } from 'firebase/database';
@@ -79,6 +80,18 @@ export default function CalendarioScreen({ navigation, route }) {
     const longPressed = useRef(false);
     const solicitudesVistas = useRef(new Set());
     const scrollRef = useRef(null);
+
+    // Viene del widget: abrir directamente el panel del día tocado
+    useEffect(() => {
+        const abrirDesdeWidget = () => {
+            const p = tomarDiaPendiente();
+            if (!p) return;
+            setAnio(p.anio);
+            abrirPanel(p.d, p.mIdx);
+        };
+        abrirDesdeWidget();
+        return oirDia(abrirDesdeWidget);
+    }, []);
 
     useEffect(() => {
         let unsubCambios, unsubNotas, unsubCambiosTodos, unsubSolicitudes, unsubEquipo;
