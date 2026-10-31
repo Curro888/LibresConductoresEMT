@@ -576,11 +576,27 @@ export default function HistorialScreen({ navigation, route }) {
                         { text: 'Cancelar', style: 'cancel' },
                         { text: 'Borrar', style: 'destructive', onPress: async () => {
                             await remove(ref(db, 'cambios/' + sesion.miID + '/' + par.key));
+                            await liberarTarjetaDelCambio(par.cambio);
                         }}
                     ]);
                 }}><Text style={s.btnBorrarTexto}>🗑️</Text></TouchableOpacity>
             </View>
         );
+    }
+
+    // Al borrar un día desde "Mis cambios", la tarjeta de Convenio/Generados/Pendientes/L-26 de la que venía
+    // se libera (o se borra si nació junto con ese día), igual que al quitarlo desde el calendario.
+    async function liberarTarjetaDelCambio(cambio) {
+        try {
+            if (!cambio || !cambio.histKey) return;
+            const refH = ref(db, 'historial2/' + sesion.miID + '/' + cambio.histKey);
+            const nace = cambio.texto === 'Libre sin compensación'
+                || cambio.clase === 'b-l26'
+                || cambio.texto === 'Trabajado (genera pendiente)'
+                || cambio.clase === 'b-generado';
+            if (nace) await remove(refH);
+            else await update(refH, { usado: false, accion: null, diaAsignado: null });
+        } catch (e) {}
     }
 
     function renderVacacion(key, cambio) {
