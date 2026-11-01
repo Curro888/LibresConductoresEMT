@@ -1,6 +1,7 @@
 import React from 'react';
 import { CalendarioWidget } from './CalendarioWidget';
 import { calcularDatosWidget } from './datosWidget';
+import { anchoWidgetDp } from './anchoWidget';
 
 export async function widgetTaskHandler(props) {
   try {
@@ -9,7 +10,7 @@ export async function widgetTaskHandler(props) {
       case 'WIDGET_UPDATE':
       case 'WIDGET_RESIZED': {
         const data = await calcularDatosWidget();
-        props.renderWidget(<CalendarioWidget data={data} />);
+        props.renderWidget(<CalendarioWidget data={data} ancho={anchoWidgetDp(props.widgetInfo)} />);
         break;
       }
       default:
