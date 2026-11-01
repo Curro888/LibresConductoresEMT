@@ -18,7 +18,7 @@ Notifications.setNotificationHandler({
 // Libres Conductores EMT (y se configure Firebase Cloud Messaging) se deja en null:
 // así la app NO registra avisos push (y tampoco usa por error el proyecto de TurnosEMT).
 // Cuando exista, se pone aquí el ID (el mismo que extra.eas.projectId de app.json).
-const EXPO_PROJECT_ID = null;
+const EXPO_PROJECT_ID = 'f58b5000-5991-477f-bb69-1c8707f428bd';
 
 export async function registerForPushNotificationsAsync(userId) {
   if (!EXPO_PROJECT_ID) return null; // push desactivado hasta configurar el proyecto

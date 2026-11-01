@@ -21,7 +21,8 @@
         "backgroundColor": "#1e1b4b"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.curro888.libresconductoresemt"
+      "package": "com.curro888.libresconductoresemt",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
