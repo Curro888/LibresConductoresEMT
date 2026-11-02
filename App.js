@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { pedirDia, leerEnlaceDia } from './widget/abrirDia';
+import { actualizarWidget } from './widget/actualizarWidget';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -111,6 +112,7 @@ function MainTabs({ route }) {
         const listener = AppState.addEventListener('change', (estado) => {
             if (estado === 'active') {
                 Notifications.dismissAllNotificationsAsync().catch(() => {});
+                actualizarWidget(); // al volver a la app, el widget se redibuja con el día de hoy
             }
         });
         return () => listener.remove();
