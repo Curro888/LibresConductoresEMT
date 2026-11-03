@@ -67,6 +67,8 @@ nav button{font-size:10px}
 .anio{display:flex;align-items:center;justify-content:center;gap:16px;margin:6px auto 10px}
 .anio button{width:40px;height:40px;border-radius:20px;border:0;background:var(--pric);color:var(--pri);font-size:18px;font-weight:900}
 .anio b{font-size:18px}
+.avatar{border-radius:50%;object-fit:cover;flex:none;display:block}
+.avatar.ph{display:flex;align-items:center;justify-content:center;background:var(--pric);color:var(--pri);font-weight:800}
 .fila{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:18px;padding:12px;margin-bottom:8px}
 .fila.yo{outline:2px solid var(--pri)}
 .ico{width:40px;height:40px;border-radius:20px;background:var(--pric);display:flex;align-items:center;justify-content:center;font-size:18px;flex:none}
@@ -789,7 +791,7 @@ function vComp(){
   if(!miembros.length)h+='<div class="card small">Cargando miembros…</div>';
   miembros.slice().sort((a,b)=>(a.id===S.miID?-1:b.id===S.miID?1:String(a.n).localeCompare(String(b.n)))).forEach(p=>{
     const cam=p.id===S.miID?cambios:(cambiosTodos[p.id]||{}),libre=esLibreFinal(y,p.g,p.t,m,d,cam);
-    h+='<div class="fila'+(p.id===S.miID?' yo':'')+'" data-p="'+esc(p.id)+'"><div class="ico'+(libre?' libre':'')+'">'+(libre?'🏠':'🚌')+'</div><div class="t"><b>'+esc(p.n)+(p.id===S.miID?' (yo)':'')+'</b><div>'+esc(textoPerfil(p))+' · '+(libre?'Libra':'Trabaja')+'</div></div><div style="font-size:20px">📅</div></div>';
+    h+='<div class="fila'+(p.id===S.miID?' yo':'')+'" data-p="'+esc(p.id)+'">'+(fotoDe(p.id)?'<img class="avatar" src="'+fotoDe(p.id)+'" style="width:40px;height:40px;border:3px solid '+(libre?'#ef4444':'var(--pri)')+'">':'<div class="ico'+(libre?' libre':'')+'">'+(libre?'🏠':'🚌')+'</div>')+'<div class="t"><b>'+esc(p.n)+(p.id===S.miID?' (yo)':'')+'</b><div>'+esc(textoPerfil(p))+' · '+(libre?'Libra':'Trabaja')+'</div></div><div style="font-size:20px">📅</div></div>';
   });
   $('main').innerHTML=h;
 }
@@ -815,13 +817,46 @@ function vGru(){
 }
 
 // --- Ajustes ---
+// ===== FOTOS (se guardan solo en este dispositivo, como en la app) =====
+function fotoDe(id){const f=LS.get('fotosLC')||{};return f[String(id)]||null}
+function avatarHTML(id,nombre,grande){
+  const f=fotoDe(id),t=grande?64:40;
+  if(f)return '<img class="avatar" src="'+f+'" style="width:'+t+'px;height:'+t+'px">';
+  return '<div class="avatar ph" style="width:'+t+'px;height:'+t+'px;font-size:'+(grande?26:16)+'px">'+esc(String(nombre||'?').trim().charAt(0).toUpperCase())+'</div>';
+}
+let FOTO_INP=null;
+function elegirFoto(id,despues){
+  if(!FOTO_INP){FOTO_INP=document.createElement('input');FOTO_INP.type='file';FOTO_INP.accept='image/*';FOTO_INP.style.display='none';document.body.appendChild(FOTO_INP)}
+  const inp=FOTO_INP;
+  inp.onchange=function(){
+    const file=inp.files&&inp.files[0];inp.value='';if(!file)return;
+    const r=new FileReader();
+    r.onload=function(e){
+      const img=new Image();
+      img.onload=function(){
+        const max=160;let w=img.width,h=img.height;
+        if(w>h){if(w>max){h=Math.round(h*max/w);w=max}}else{if(h>max){w=Math.round(w*max/h);h=max}}
+        const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);
+        const f=LS.get('fotosLC')||{};f[String(id)]=cv.toDataURL('image/jpeg',0.6);LS.set('fotosLC',f);
+        if(despues)despues();
+      };
+      img.onerror=function(){alert('No se pudo leer esa imagen')};
+      img.src=e.target.result;
+    };
+    r.readAsDataURL(file);
+  };
+  inp.click();
+}
+function quitarFoto(id,despues){const f=LS.get('fotosLC')||{};delete f[String(id)];LS.set('fotosLC',f);if(despues)despues()}
+
 function vAj(){
-  let h='<div class="card"><b>'+esc(S.miNombreCompleto)+'</b><div class="small">Nº empleado '+esc(S.miID)+'</div><div style="margin-top:8px">'+esc(textoPerfil(S.miPerfil||{g:S.miGrupoSesion,t:S.miTipoSesion}))+'</div><button class="btn fill" data-aj="perfil">✏️ Editar mi perfil</button><div class="small" style="margin-top:6px">Si te cambian de grupo de libres, cámbialo aquí: el calendario se actualiza desde el 1 de enero.</div></div>';
+  let h='<div class="card"><div style="display:flex;align-items:center;gap:12px"><div data-aj="foto">'+avatarHTML(S.miID,S.miNombreCompleto,true)+'</div><div><b>'+esc(S.miNombreCompleto)+'</b><div class="small">Nº empleado '+esc(S.miID)+'</div></div></div><button class="btn" data-aj="foto">📷 Cambiar foto</button>'+(fotoDe(S.miID)?'<button class="btn" data-aj="fotoquitar" style="border-color:var(--text2);color:var(--text2)">Quitar foto</button>':'')+'<div style="margin-top:8px">'+esc(textoPerfil(S.miPerfil||{g:S.miGrupoSesion,t:S.miTipoSesion}))+'</div><button class="btn fill" data-aj="perfil">✏️ Editar mi perfil</button><div class="small" style="margin-top:6px">Si te cambian de grupo de libres, cámbialo aquí: el calendario se actualiza desde el 1 de enero.</div></div>';
   if(esCT())h+='<div class="card"><b>🔁 Correturnos</b><div class="small" style="margin-top:6px">Grupo abierto. Si cambias tu perfil a línea fija, saldrás de la lista y los que van detrás subirán un puesto.</div></div>';
   else if(esPE())h+='<div class="card"><b>Personales</b><div class="small" style="margin-top:6px">Grupo abierto con todas las cocheras. Si cambias de personal, cámbialo en «Editar mi perfil».</div></div>';
   else if(S.modoGrupo)h+='<div class="card"><b>👥 Grupo</b><div class="small" style="word-break:break-all">Código: '+esc(S.grupoActual)+'</div><button class="btn fill" data-aj="grupo">✏️ Editar grupo</button><div class="small" style="margin-top:6px">Añade a compañeros que no usan la app o corrige sus datos.</div></div>';
   h+='<div class="card"><div style="font-weight:800">📅 Aviso del día 14</div><div class="small" style="margin:4px 0 8px">Cada día 14 a las 22:00: último día para pedir cobro de días. Se añade a tu calendario del iPhone y se repite todos los meses.</div><button class="btn fill" data-aj="ics" style="margin-top:0">Añadir aviso al calendario</button></div>';
   h+='<div class="card"><div style="font-weight:800">💾 Copia de seguridad</div><div class="small" style="margin:4px 0 8px">Guarda tus cambios, historial y notas donde quieras, y restáuralos cuando lo necesites.</div><button class="btn" data-aj="copia" style="margin-top:0">Guardar copia</button><button class="btn" data-aj="restaurar" style="background:#64748b">Restaurar</button></div>';
+  h+='<div class="card"><div style="font-weight:800">🌐 Web EMT</div><div class="small" style="margin:4px 0 8px">Abre el portal corporativo de la empresa.</div><button class="btn fill" data-aj="webemt" style="margin-top:0">Abrir Web EMT</button></div>';
   h+='<div class="card"><button class="btn" data-aj="dark" style="margin-top:0">'+(document.body.classList.contains('dark')?'☀️ Modo claro':'🌙 Modo oscuro')+'</button><button class="btn red" data-aj="salir">🚪 Cerrar sesión</button></div>';
   h+='<div class="card small" style="text-align:center">Libres Conductores EMT · versión web para iPhone</div>';
   $('main').innerHTML=h;
@@ -938,9 +973,10 @@ async function editarGrupo(){
 function formMiembro(id){
   const p=id===null?{}:(miembros.find(x=>x.id===id)||{});
   MF={orig:id,P:{g:p.g||'',t:p.t||'',c:!!p.c,l:p.l||'',tu:p.tu||'',cl:p.cl||'',e:p.e||'',pe:p.pe||''},sis:'C'};
-  modal('<h2>'+(id===null?'Añadir persona':'Editar persona')+'</h2><label>Nombre</label><input type="text" id="me-n" value="'+esc(p.n||'')+'"><label>Número de empleado</label><input type="tel" id="me-id" value="'+esc(p.id||'')+'"><div id="pf3"></div><button class="btn fill" id="me-ok">Guardar</button><button class="btn" id="me-cancel">Cancelar</button>');
+  modal('<h2>'+(id===null?'Añadir persona':'Editar persona')+'</h2>'+(id===null?'':'<div style="display:flex;align-items:center;gap:12px;margin:8px 0"><span id="me-av">'+avatarHTML(p.id,p.n,true)+'</span><button class="btn" id="me-foto" style="margin:0;width:auto;flex:1">📷 Cambiar foto</button></div>')+'<label>Nombre</label><input type="text" id="me-n" value="'+esc(p.n||'')+'"><label>Número de empleado</label><input type="tel" id="me-id" value="'+esc(p.id||'')+'"><div id="pf3"></div><button class="btn fill" id="me-ok">Guardar</button><button class="btn" id="me-cancel">Cancelar</button>');
   pintaForm($('pf3'),MF);
   $('modalc').onclick=null;
+  if(id!==null)$('me-foto').onclick=()=>elegirFoto(p.id,()=>{$('me-av').innerHTML=avatarHTML(p.id,p.n,true)});
   $('me-ok').onclick=guardarMiembro;$('me-cancel').onclick=editarGrupo;
 }
 async function guardarMiembro(){
@@ -976,8 +1012,9 @@ async function eliminarGrupo(){
 }
 function editarPerfil(){
   const p=S.miPerfil||{};EF={P:{g:p.g||S.miGrupoSesion,t:p.t||S.miTipoSesion,c:!!p.c,l:p.l||'',tu:p.tu||'',cl:p.cl||'',e:p.e||'',pe:p.pe||''},sis:'C'};
-  modal('<h2>Mi perfil</h2><div id="pf2"></div><button class="btn fill" id="pf-ok">Guardar</button><button class="btn" onclick="cerrarModal()">Cancelar</button>');
+  modal('<h2>Mi perfil</h2><div style="display:flex;align-items:center;gap:12px;margin:8px 0"><span id="pf-av">'+avatarHTML(S.miID,S.miNombreCompleto,true)+'</span><button class="btn" id="pf-foto" style="margin:0;width:auto;flex:1">📷 Cambiar foto</button></div><div id="pf2"></div><button class="btn fill" id="pf-ok">Guardar</button><button class="btn" onclick="cerrarModal()">Cancelar</button>');
   pintaForm($('pf2'),EF);
+  $('pf-foto').onclick=()=>elegirFoto(S.miID,()=>{$('pf-av').innerHTML=avatarHTML(S.miID,S.miNombreCompleto,true)});
   $('pf-ok').onclick=guardarPerfil;
 }
 async function salirCT(m){
@@ -1023,6 +1060,9 @@ document.addEventListener('click',e=>{
   const gt=e.target.closest('[data-gt]');if(gt){grVer.t=gt.dataset.gt;render();return}
   const aj=e.target.closest('[data-aj]');if(aj){
     if(aj.dataset.aj==='perfil')editarPerfil();
+    else if(aj.dataset.aj==='foto')elegirFoto(S.miID,vAj);
+    else if(aj.dataset.aj==='fotoquitar')quitarFoto(S.miID,vAj);
+    else if(aj.dataset.aj==='webemt')window.open('https://miestacion.emtmadrid.es/','_blank','noopener');
     else if(aj.dataset.aj==='grupo')editarGrupo();
     else if(aj.dataset.aj==='copia')guardarCopia();
     else if(aj.dataset.aj==='restaurar')pedirCopia();
