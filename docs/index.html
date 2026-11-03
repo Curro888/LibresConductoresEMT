@@ -856,7 +856,6 @@ function vAj(){
   else if(S.modoGrupo)h+='<div class="card"><b>👥 Grupo</b><div class="small" style="word-break:break-all">Código: '+esc(S.grupoActual)+'</div><button class="btn fill" data-aj="grupo">✏️ Editar grupo</button><div class="small" style="margin-top:6px">Añade a compañeros que no usan la app o corrige sus datos.</div></div>';
   h+='<div class="card"><div style="font-weight:800">📅 Aviso del día 14</div><div class="small" style="margin:4px 0 8px">Cada día 14 a las 22:00: último día para pedir cobro de días. Se añade a tu calendario del iPhone y se repite todos los meses.</div><button class="btn fill" data-aj="ics" style="margin-top:0">Añadir aviso al calendario</button></div>';
   h+='<div class="card"><div style="font-weight:800">💾 Copia de seguridad</div><div class="small" style="margin:4px 0 8px">Guarda tus cambios, historial y notas donde quieras, y restáuralos cuando lo necesites.</div><button class="btn" data-aj="copia" style="margin-top:0">Guardar copia</button><button class="btn" data-aj="restaurar" style="background:#64748b">Restaurar</button></div>';
-  h+='<div class="card"><div style="font-weight:800">🌐 Web EMT</div><div class="small" style="margin:4px 0 8px">Abre el portal corporativo de la empresa.</div><button class="btn fill" data-aj="webemt" style="margin-top:0">Abrir Web EMT</button></div>';
   h+='<div class="card"><button class="btn" data-aj="dark" style="margin-top:0">'+(document.body.classList.contains('dark')?'☀️ Modo claro':'🌙 Modo oscuro')+'</button><button class="btn red" data-aj="salir">🚪 Cerrar sesión</button></div>';
   h+='<div class="card small" style="text-align:center">Libres Conductores EMT · versión web para iPhone</div>';
   $('main').innerHTML=h;
@@ -929,7 +928,7 @@ function vHist(){
   const L=hLista(),sinUsar=a=>a.filter(([,x])=>!x.usado).length;
   if(!HV){
     const cnt={generados:sinUsar(L.generados),convenio:sinUsar(L.convenio),vacaciones:L.vacaciones.length,pendientes:sinUsar(L.pendientes),cambios:L.comp.length+parPropios(L.propios).length,notas:L.notas.length,graciosos:L.graciosos.length,l26:sinUsar(L.l26)};
-    let h='<div class="sec">Tu historial</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+HCATS.map(c=>'<button class="tile" style="background:'+c.c+';margin:0" data-hv="'+c.k+'"><div class="circ">'+c.e+'</div><div><b>'+c.n+(cnt[c.k]?' ('+cnt[c.k]+')':'')+'</b><small>'+c.s+'</small></div></button>').join('')+'</div>';
+    let h='<div class="sec">Tu historial</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+HCATS.map(c=>'<button class="tile" style="background:'+c.c+';margin:0" data-hv="'+c.k+'"><div class="circ">'+c.e+'</div><div><b>'+c.n+(cnt[c.k]?' ('+cnt[c.k]+')':'')+'</b><small>'+c.s+'</small></div></button>').join('')+'<button class="tile" style="background:#64748b;margin:0" data-aj="webemt"><div class="circ">🌐</div><div><b>Web EMT</b><small>Portal corporativo</small></div></button></div>';
     h+='<div class="card small" style="margin-top:14px">Toca una tarjeta para ver tus días generados, de convenio, pendientes y L-26. Desde ahí puedes añadirlos, usarlos, editarlos o borrarlos.</div>';
     $('main').innerHTML=h;return;
   }
