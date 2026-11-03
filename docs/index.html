@@ -1012,9 +1012,8 @@ async function eliminarGrupo(){
 }
 function editarPerfil(){
   const p=S.miPerfil||{};EF={P:{g:p.g||S.miGrupoSesion,t:p.t||S.miTipoSesion,c:!!p.c,l:p.l||'',tu:p.tu||'',cl:p.cl||'',e:p.e||'',pe:p.pe||''},sis:'C'};
-  modal('<h2>Mi perfil</h2><div style="display:flex;align-items:center;gap:12px;margin:8px 0"><span id="pf-av">'+avatarHTML(S.miID,S.miNombreCompleto,true)+'</span><button class="btn" id="pf-foto" style="margin:0;width:auto;flex:1">📷 Cambiar foto</button></div><div id="pf2"></div><button class="btn fill" id="pf-ok">Guardar</button><button class="btn" onclick="cerrarModal()">Cancelar</button>');
+  modal('<h2>Mi perfil</h2><div id="pf2"></div><button class="btn fill" id="pf-ok">Guardar</button><button class="btn" onclick="cerrarModal()">Cancelar</button>');
   pintaForm($('pf2'),EF);
-  $('pf-foto').onclick=()=>elegirFoto(S.miID,()=>{$('pf-av').innerHTML=avatarHTML(S.miID,S.miNombreCompleto,true)});
   $('pf-ok').onclick=guardarPerfil;
 }
 async function salirCT(m){
