@@ -92,6 +92,18 @@ nav button{font-size:10px}
 .leyenda{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--text2);margin-bottom:10px;justify-content:center}
 .leyenda i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 #spin{text-align:center;padding:40px;color:var(--text2)}
+.tb{width:100%;table-layout:fixed;border-collapse:collapse;font-size:14px}
+.tb th{font-size:11px;color:var(--text2);text-transform:uppercase;padding:6px 2px;text-align:center;font-weight:700}
+.tb td{padding:8px 2px;text-align:center;border-top:1px solid var(--bord)}
+.tb th:first-child,.tb td:first-child{text-align:left;padding-left:8px;font-weight:700}
+.tb tr.tot td{font-weight:800;border-top:2px solid var(--text2)}
+.tb td.bd{text-align:left;padding:0 8px 8px;border-top:0;font-size:12px}
+.st3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+.st2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0}
+.stc{border-radius:14px;padding:12px 4px;text-align:center}
+.stc b{display:block;font-size:24px;line-height:1.1}
+.stc small{display:block;font-size:10px;letter-spacing:.05em;margin-top:4px;color:var(--text2);font-weight:700}
+.bdg{display:inline-block;border-radius:8px;padding:1px 6px;margin-right:4px;font-weight:700;background:rgba(124,58,237,.15)}
 </style>
 </head>
 <body>
@@ -158,7 +170,29 @@ let hbTimer=null;
 let SEL=null,PEND=null,vistas=new Set(),vigPend=null;
 let hist={},notas={},HV=null;
 
-function guardarSesion(){LS.set('sesionLC',S)}
+function setCookie(n,v,d){try{const x=new Date();x.setTime(x.getTime()+d*864e5);document.cookie=n+'='+encodeURIComponent(v)+';expires='+x.toUTCString()+';path=/;SameSite=Lax'}catch(e){}}
+function getCookie(n){try{const f=document.cookie.split('; ').find(x=>x.indexOf(n+'=')===0);return f?decodeURIComponent(f.slice(n.length+1)):null}catch(e){return null}}
+function abrirIDB(){return new Promise((res,rej)=>{try{const q=indexedDB.open('libresconductores',1);q.onupgradeneeded=e=>e.target.result.createObjectStore('sesion',{keyPath:'k'});q.onsuccess=e=>res(e.target.result);q.onerror=()=>rej()}catch(e){rej()}})}
+function idbSet(k,v){return abrirIDB().then(d=>new Promise((res,rej)=>{const tx=d.transaction('sesion','readwrite');tx.objectStore('sesion').put({k:k,v:v});tx.oncomplete=res;tx.onerror=rej}))}
+function idbGet(k){return abrirIDB().then(d=>new Promise(res=>{const q=d.transaction('sesion','readonly').objectStore('sesion').get(k);q.onsuccess=()=>res(q.result?q.result.v:null);q.onerror=()=>res(null)}))}
+function guardarSesion(){
+  LS.set('sesionLC',S);
+  if(!S)return;
+  idbSet('sesionLC',JSON.stringify(S)).catch(()=>{});
+  setCookie('uidLC',S.miID,365);
+  try{db.ref('sesiones/'+S.miID).set(S).catch(()=>{})}catch(e){}
+}
+function borrarSesionGuardada(){
+  const id=S&&S.miID;
+  try{localStorage.removeItem('sesionLC')}catch(e){}idbSet('sesionLC','').catch(()=>{});
+  try{document.cookie='uidLC=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/'}catch(e){}
+  if(id){try{db.ref('sesiones/'+id).remove().catch(()=>{})}catch(e){}}
+}
+async function recuperarSesion(){
+  try{const raw=await idbGet('sesionLC');if(raw){const x=JSON.parse(raw);if(x&&x.miID&&x.miGrupoSesion)return x}}catch(e){}
+  try{const id=getCookie('uidLC');if(id){await authP;const x=(await db.ref('sesiones/'+id).once('value')).val();if(x&&x.miID&&x.miGrupoSesion)return x}}catch(e){}
+  return null;
+}
 function modal(html){$('modalc').innerHTML=html;$('modal').classList.remove('hide')}
 function cerrarModal(){$('modal').classList.add('hide');$('modalc').innerHTML=''}
 $('modal').addEventListener('click',e=>{if(e.target.id==='modal')cerrarModal()});
@@ -774,7 +808,7 @@ function pintaCT(){
 }
 function vComp(){
   const hoy=new Date(),y=hoy.getFullYear(),m=hoy.getMonth(),d=hoy.getDate();
-  let h='<div class="sec">Hoy es '+DSEM[hoy.getDay()]+', '+d+' de '+MESES[m]+'</div>';
+  let h='<div class="sec">Hoy es '+DSEM[hoy.getDay()]+', '+d+' de '+MESES[m]+'</div><button class="btn" data-aj="dias" style="margin:0 0 10px">📊 Stats · días trabajados por mes</button>';
   if(!S.modoGrupo){h+='<div class="card small">Estás en modo individual. Para ver a tus compañeros, cierra sesión y entra o crea un grupo.</div>';$('main').innerHTML=h;return}
   if(esPE()){
     const nuevo=!$('peq')||$('main').dataset.t!=='comp';
@@ -856,6 +890,7 @@ function vAj(){
   else if(S.modoGrupo)h+='<div class="card"><b>👥 Grupo</b><div class="small" style="word-break:break-all">Código: '+esc(S.grupoActual)+'</div><button class="btn fill" data-aj="grupo">✏️ Editar grupo</button><div class="small" style="margin-top:6px">Añade a compañeros que no usan la app o corrige sus datos.</div></div>';
   h+='<div class="card"><div style="font-weight:800">📅 Aviso del día 14</div><div class="small" style="margin:4px 0 8px">Cada día 14 a las 22:00: último día para pedir cobro de días. Se añade a tu calendario del iPhone y se repite todos los meses.</div><button class="btn fill" data-aj="ics" style="margin-top:0">Añadir aviso al calendario</button></div>';
   h+='<div class="card"><div style="font-weight:800">💾 Copia de seguridad</div><div class="small" style="margin:4px 0 8px">Guarda tus cambios, historial y notas donde quieras, y restáuralos cuando lo necesites.</div><button class="btn" data-aj="copia" style="margin-top:0">Guardar copia</button><button class="btn" data-aj="restaurar" style="background:#64748b">Restaurar</button></div>';
+  h+='<div class="card"><div style="font-weight:800">📊 Estadísticas</div><div class="small" style="margin:4px 0 8px">Tus días libres y horas trabajadas.</div><button class="btn fill" data-aj="stats" style="margin-top:0">Ver estadísticas</button></div>';
   h+='<div class="card"><button class="btn" data-aj="dark" style="margin-top:0">'+(document.body.classList.contains('dark')?'☀️ Modo claro':'🌙 Modo oscuro')+'</button><button class="btn red" data-aj="salir">🚪 Cerrar sesión</button></div>';
   h+='<div class="card small" style="text-align:center">Libres Conductores EMT · versión web para iPhone</div>';
   $('main').innerHTML=h;
@@ -1006,7 +1041,7 @@ async function eliminarGrupo(){
   try{
     await db.ref('grupos/'+c).remove();await db.ref('chats/'+c).remove();await db.ref('chatLeidos/'+c).remove();await db.ref('presencia/'+c).remove();
     LS.set('gruposGuardadosLC',(LS.get('gruposGuardadosLC')||[]).filter(g=>g.codigo!==c));
-    cerrarModal();limpiar();LS.del('sesionLC');S=null;LF={modo:null,P:null,sis:'C'};alert('✅ Grupo eliminado.');pantallaLogin();
+    cerrarModal();limpiar();borrarSesionGuardada();S=null;LF={modo:null,P:null,sis:'C'};alert('✅ Grupo eliminado.');pantallaLogin();
   }catch(e){alert('No se pudo borrar el grupo: '+(e.code||e.message||e))}
 }
 function editarPerfil(){
@@ -1049,6 +1084,7 @@ document.addEventListener('click',e=>{
   const hv=e.target.closest('[data-hv]');if(hv){HV=hv.dataset.hv||null;$('main').scrollTop=0;render();return}
   const hd=e.target.closest('[data-hd]');if(hd){borrarHist(hd.dataset.hd);return}
   const hn=e.target.closest('[data-hn]');if(hn){editarNotaKey(hn.dataset.hn);return}
+  const sy=e.target.closest('[data-sty]');if(sy&&STY){const n=STY.y+(+sy.dataset.sty);if(ANIOS.includes(n))STY.f(n);return}
   const a=e.target.closest('[data-anio]');
   if(a){const n=anio+(+a.dataset.anio);if(n>=Math.min(...ANIOS)&&n<=Math.max(...ANIOS)){anio=n;if(!$('modal').classList.contains('hide'))verCompanero(window._vc);else render()}return}
   const c=e.target.closest('.c[data-d]');if(c&&tab==='cal'){if(LPfired){LPfired=false;return}if(MG)confirmarMG(+c.dataset.d,+c.dataset.m);else if(SEL)confirmarSel(+c.dataset.d,+c.dataset.m);else abrirPanelDia(anio,+c.dataset.m,+c.dataset.d);return}
@@ -1060,6 +1096,8 @@ document.addEventListener('click',e=>{
     if(aj.dataset.aj==='perfil')editarPerfil();
     else if(aj.dataset.aj==='foto')elegirFoto(S.miID,vAj);
     else if(aj.dataset.aj==='fotoquitar')quitarFoto(S.miID,vAj);
+    else if(aj.dataset.aj==='stats')verEstadisticas();
+    else if(aj.dataset.aj==='dias')verDiasTrabajados();
     else if(aj.dataset.aj==='webemt')window.open('https://miestacion.emtmadrid.es/','_blank','noopener');
     else if(aj.dataset.aj==='grupo')editarGrupo();
     else if(aj.dataset.aj==='copia')guardarCopia();
@@ -1068,9 +1106,60 @@ document.addEventListener('click',e=>{
     else if(aj.dataset.aj==='copiaok')restaurarCopia();
     else if(aj.dataset.aj==='ics')bajarAvisoICS();
     else if(aj.dataset.aj==='dark'){document.body.classList.toggle('dark');LS.set('darkLC',document.body.classList.contains('dark')?1:0);vAj()}
-    else if(aj.dataset.aj==='salir'&&confirm('¿Cerrar sesión en este iPhone?')){limpiar();LS.del('sesionLC');S=null;LF={modo:null,P:null,sis:'C'};pantallaLogin()}
+    else if(aj.dataset.aj==='salir'&&confirm('¿Cerrar sesión en este iPhone?')){limpiar();borrarSesionGuardada();S=null;LF={modo:null,P:null,sis:'C'};pantallaLogin()}
   }
 });
+
+// ===== ESTADÍSTICAS (como en la app: 7,5 horas por día trabajado) =====
+const HORAS_DIA=7.5;
+const fmtH=x=>(Math.round(x*10)/10).toFixed(1).replace('.',',')+' h';
+let STY=null;
+function selSty(y,f){STY={y:y,f:f};return '<div class="anio"><button data-sty="-1">‹</button><b>'+y+'</b><button data-sty="1">›</button></div>'}
+function anioStats(){const Y=new Date().getFullYear();return ANIOS.includes(Y)?Y:anio}
+function verEstadisticas(y){
+  y=y||anioStats();
+  const hoy=new Date(),esAct=y===hoy.getFullYear(),mHoy=hoy.getMonth(),dHoy=hoy.getDate();
+  const g=S.miGrupoSesion,t=S.miTipoSesion,L=getLibres(y,g,t);
+  let h='<h2>📊 Estadísticas</h2><div class="small">'+esc(textoPerfil(S.miPerfil||{g:g,t:t}))+'</div>'+selSty(y,verEstadisticas);
+  if(L===VACIO){modal(h+'<div class="card small">Todavía no hay libres de '+y+' para tu grupo.</div><button class="btn" onclick="cerrarModal()">Cerrar</button>');return}
+  let tl=0,fds=0,fest=0,hAnio=0,hMes=0,hRest=0;const filas=[];
+  for(let m=0;m<12;m++){
+    const n=new Date(y,m+1,0).getDate(),base=new Set([].concat(L.libres[m]||[],L.subgrupo[m]||[],L.lrj[m]||[]));
+    let f=0,fe=0;base.forEach(d=>{const w=new Date(y,m,d).getDay();if(w===0||w===6)f++;if(esFestivo(y,m,d))fe++});
+    tl+=base.size;fds+=f;fest+=fe;
+    let nC=0,nP=0,nPe=0,nG=0;
+    Object.keys(cambios||{}).forEach(k=>{const o=partesKey(k),c=cambios[k];if(o.y!==y||o.m!==m||!c)return;
+      if(c.clase==='b-inter'||c.clase==='b-cambio-libre')nC++;else if(c.clase==='b-propio'||c.clase==='b-cambio')nP++;else if(c.clase==='b-pend')nPe++;else if(c.clase==='b-generado')nG++});
+    if(esAct)for(let d=1;d<=n;d++){
+      if(esLibreFinal(y,g,t,m,d,cambios))continue;
+      if(m<mHoy||(m===mHoy&&d<=dHoy)){hAnio+=HORAS_DIA;if(m===mHoy)hMes+=HORAS_DIA}
+      else if(m===mHoy)hRest+=HORAS_DIA;
+    }
+    const bd=(nC?'<span class="bdg">🤝 '+nC+'</span>':'')+(nP?'<span class="bdg">🔄 '+nP+'</span>':'')+(nPe?'<span class="bdg">⏳ '+nPe+'</span>':'')+(nG?'<span class="bdg">✨ '+nG+'</span>':'');
+    filas.push('<tr><td>'+MESES[m].slice(0,3)+'</td><td>'+base.size+'</td><td style="color:#16a34a">'+f+'</td><td style="color:#dc2626">'+fe+'</td></tr>'+(bd?'<tr><td class="bd" colspan="4">'+bd+'</td></tr>':''));
+  }
+  h+='<div class="st3"><div class="stc" style="background:rgba(124,58,237,.14)"><b style="color:#7c3aed">'+tl+'</b><small>TOTAL LIBRES</small></div><div class="stc" style="background:rgba(22,163,74,.14)"><b style="color:#16a34a">'+fds+'</b><small>FIN DE SEMANA</small></div><div class="stc" style="background:rgba(220,38,38,.14)"><b style="color:#dc2626">'+fest+'</b><small>FESTIVOS</small></div></div>';
+  if(esAct){
+    h+='<div class="sec">⏱️ Horas trabajadas</div><div class="st2"><div class="stc" style="background:rgba(3,105,161,.14)"><b style="color:#0369a1">'+fmtH(hMes)+'</b><small>'+MESES[mHoy].toUpperCase()+' (HASTA HOY)</small></div><div class="stc" style="background:rgba(22,163,74,.14)"><b style="color:#16a34a">'+fmtH(hRest)+'</b><small>QUEDAN EN EL MES</small></div></div><div class="stc" style="background:rgba(124,58,237,.14);margin-bottom:8px"><b style="color:#7c3aed">'+fmtH(hAnio)+'</b><small>TOTAL AÑO HASTA HOY</small></div>';
+  }else h+='<div class="small" style="margin:6px 0">Las horas se calculan solo del año en curso.</div>';
+  h+='<div class="sec">Detalle por mes</div><div class="card" style="padding:4px 0"><table class="tb"><tr><th>Mes</th><th>Libres</th><th>FdS</th><th>Fest.</th></tr>'+filas.join('')+'</table></div><button class="btn" onclick="cerrarModal()">Cerrar</button>';
+  modal(h);
+}
+function verDiasTrabajados(y){
+  y=y||anioStats();
+  const g=S.miGrupoSesion,t=S.miTipoSesion;
+  let h='<h2>📊 Días trabajados por mes</h2>'+selSty(y,verDiasTrabajados);
+  if(getLibres(y,g,t)===VACIO){modal(h+'<div class="card small">Todavía no hay libres de '+y+' para tu grupo.</div><button class="btn" onclick="cerrarModal()">Cerrar</button>');return}
+  let T={l:0,s:0,d:0},filas=[];
+  for(let m=0;m<12;m++){
+    const n=new Date(y,m+1,0).getDate();let l=0,sa=0,dm=0;
+    for(let d=1;d<=n;d++){if(esLibreFinal(y,g,t,m,d,cambios))continue;const w=new Date(y,m,d).getDay();if(w===0)dm++;else if(w===6)sa++;else l++}
+    T.l+=l;T.s+=sa;T.d+=dm;
+    filas.push('<tr><td>'+MESES[m]+'</td><td>'+l+'</td><td>'+sa+'</td><td>'+dm+'</td><td><b>'+(l+sa+dm)+'</b></td></tr>');
+  }
+  h+='<div class="card" style="padding:4px 0"><table class="tb"><colgroup><col style="width:34%"><col style="width:17%"><col style="width:15%"><col style="width:15%"><col style="width:19%"></colgroup><tr><th>Mes</th><th>Laborab.</th><th>Sáb.</th><th>Dom.</th><th>Total</th></tr>'+filas.join('')+'<tr class="tot"><td>Total año</td><td>'+T.l+'</td><td>'+T.s+'</td><td>'+T.d+'</td><td>'+(T.l+T.s+T.d)+'</td></tr></table></div><div class="small">Cuenta tus cambios, vacaciones y días generados.</div><button class="btn" onclick="cerrarModal()">Cerrar</button>';
+  modal(h);
+}
 
 // ===== COPIA DE SEGURIDAD =====
 // Mismo formato que en la app del móvil: se puede guardar en uno y restaurar en el otro.
@@ -1134,8 +1223,16 @@ window.addEventListener('popstate',()=>{if(volverAtras())history.pushState({lc:1
 
 // ===== ARRANQUE =====
 (function(){const p=LS.get('darkLC');const osc=p===null?(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches):!!p;if(osc)document.body.classList.add('dark')})();
+function arrancar(){
+  if(S&&S.miID&&!S.miPerfil&&S.miGrupoSesion)S.miPerfil={g:String(S.miGrupoSesion),t:String(S.miTipoSesion||''),c:false};
+  if(S&&S.miID&&S.miGrupoSesion){iniciarApp();return true}
+  S=null;return false;
+}
 S=LS.get('sesionLC');
-if(S&&S.miID&&S.miGrupoSesion)iniciarApp();else{S=null;pantallaLogin()}
+if(!arrancar()){
+  pantallaLogin();
+  recuperarSesion().then(r=>{if(r&&!S){S=r;LS.set('sesionLC',S);setCookie('uidLC',S.miID,365);arrancar()}});
+}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
