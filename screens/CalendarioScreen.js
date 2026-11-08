@@ -74,6 +74,7 @@ export default function CalendarioScreen({ navigation, route }) {
     const [modalVacaciones, setModalVacaciones] = useState(null); // {diaIni, mIdxIni, diaFin, mIdxFin}
     const [modoGenerado, setModoGenerado] = useState(null);
     const [equipoActual, setEquipoActual] = useState(equipoBase);
+    const [equipoListo, setEquipoListo] = useState(false);
     const [solicitudPendiente, setSolicitudPendiente] = useState(null); // { solKey, compNom } — mi solicitud enviada, esperando respuesta
     const panelAnim = useRef(new Animated.Value(SW)).current;
     const longPressTimer = useRef(null);
@@ -130,10 +131,14 @@ export default function CalendarioScreen({ navigation, route }) {
                             const data = snap.val() || {};
                             const lista = Array.isArray(data) ? data.filter(Boolean) : Object.values(data);
                             setEquipoActual(lista);
+                            setEquipoListo(true);
                         });
+                    } else {
+                        setEquipoListo(true);
                     }
                 } else {
                     setEquipoActual(equipoBase);
+                    setEquipoListo(true);
                 }
             }
         }
@@ -778,20 +783,20 @@ export default function CalendarioScreen({ navigation, route }) {
                     <TouchableOpacity onPress={cerrarPanel}><Text style={s.panelCerrar}>✕</Text></TouchableOpacity>
                 </View>
                 <ScrollView>
-                    <Text style={[s.panelSeccion, { color: '#ef4444' }]}>🏠 LIBRAN ({libran.length})</Text>
+                    <Text style={[s.panelSeccion, { color: '#ef4444' }]}>🏠 LIBRAN{equipoListo ? ` (${libran.length})` : ''}</Text>
                     {libran.length ? libran.map(p => (
                         <View key={p.id} style={s.panelFila}>
                             <Text style={s.panelNombre}>{p.n}</Text>
                             <Text style={s.panelSub}>{textoPerfil(p)}</Text>
                         </View>
-                    )) : <Text style={s.panelVacio}>Ninguno</Text>}
-                    <Text style={[s.panelSeccion, { color: '#3b82f6', marginTop: 12 }]}>🚌 TRABAJAN ({trabajan.length})</Text>
+                    )) : <Text style={s.panelVacio}>{equipoListo ? 'Ninguno' : 'Cargando compañeros…'}</Text>}
+                    <Text style={[s.panelSeccion, { color: '#3b82f6', marginTop: 12 }]}>🚌 TRABAJAN{equipoListo ? ` (${trabajan.length})` : ''}</Text>
                     {trabajan.length ? trabajan.map(p => (
                         <View key={p.id} style={s.panelFila}>
                             <Text style={s.panelNombre}>{p.n}</Text>
                             <Text style={s.panelSub}>{textoPerfil(p)}</Text>
                         </View>
-                    )) : <Text style={s.panelVacio}>Ninguno</Text>}
+                    )) : <Text style={s.panelVacio}>{equipoListo ? 'Ninguno' : 'Cargando compañeros…'}</Text>}
                 </ScrollView>
             </Animated.View>
         );
