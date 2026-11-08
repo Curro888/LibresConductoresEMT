@@ -683,7 +683,7 @@ export default function CalendarioScreen({ navigation, route }) {
         const libran = (equipoActual || []).filter(p => getEstadoPersona(p.id, anio, mIdx, d, cambiosTodos, equipoActual));
         const trabajan = (equipoActual || []).filter(p => !getEstadoPersona(p.id, anio, mIdx, d, cambiosTodos, equipoActual));
         return { libran, trabajan };
-    }, [panelDia, anio, cambiosTodos]);
+    }, [panelDia, anio, cambiosTodos, equipoActual]);
 
     const s = getStyles(theme);
 
