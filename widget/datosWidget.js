@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getDiasLibres, getDiasEspeciales, esFestivo, leerDia } from '../config/datos';
 
-const N_MESES = 6;
+const N_MESES = 3;
 
 function estiloDia(cambio, esLibre, lrj, sub, festivo) {
   let libreReal = esLibre;
