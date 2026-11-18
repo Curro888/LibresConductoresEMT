@@ -96,6 +96,8 @@ export default function CalendarioScreen({ navigation, route }) {
 
     useEffect(() => {
         let unsubCambios, unsubNotas, unsubCambiosTodos, unsubSolicitudes, unsubEquipo;
+        let cancelado = false;
+        let reintentoEquipo;
         async function cargar() {
             const raw = await AsyncStorage.getItem('sesion2026');
             if (raw) {
@@ -127,12 +129,38 @@ export default function CalendarioScreen({ navigation, route }) {
                         });
                     });
                     if (s.grupoActual) {
-                        unsubEquipo = onValue(ref(db, 'grupos/' + s.grupoActual + '/miembros'), snap => {
-                            const data = snap.val() || {};
-                            const lista = Array.isArray(data) ? data.filter(Boolean) : Object.values(data);
-                            setEquipoActual(lista);
-                            setEquipoListo(true);
-                        });
+                        const claveEquipo = 'equipoCache2026_' + s.grupoActual;
+                        // 1) Lista guardada en el móvil: se muestra al instante
+                        try {
+                            const cacheRaw = await AsyncStorage.getItem(claveEquipo);
+                            if (cacheRaw) {
+                                const cacheLista = JSON.parse(cacheRaw);
+                                if (Array.isArray(cacheLista) && cacheLista.length) {
+                                    setEquipoActual(cacheLista);
+                                    setEquipoListo(true);
+                                }
+                            }
+                        } catch (e) {}
+                        // 2) Firebase la actualiza; si falla o no contesta, reintenta solo
+                        const suscribirEquipo = () => {
+                            if (cancelado) return;
+                            if (unsubEquipo) { try { unsubEquipo(); } catch (e) {} }
+                            unsubEquipo = onValue(ref(db, 'grupos/' + s.grupoActual + '/miembros'), snap => {
+                                clearTimeout(reintentoEquipo);
+                                const data = snap.val() || {};
+                                const lista = Array.isArray(data) ? data.filter(Boolean) : Object.values(data);
+                                setEquipoActual(lista);
+                                setEquipoListo(true);
+                                if (lista.length) AsyncStorage.setItem(claveEquipo, JSON.stringify(lista)).catch(() => {});
+                            }, () => {
+                                clearTimeout(reintentoEquipo);
+                                reintentoEquipo = setTimeout(suscribirEquipo, 3000);
+                            });
+                            // Si en 8 segundos no ha llegado nada, se vuelve a pedir
+                            clearTimeout(reintentoEquipo);
+                            reintentoEquipo = setTimeout(suscribirEquipo, 8000);
+                        };
+                        suscribirEquipo();
                     } else {
                         setEquipoListo(true);
                     }
@@ -144,6 +172,8 @@ export default function CalendarioScreen({ navigation, route }) {
         }
         cargar();
         return () => {
+            cancelado = true;
+            clearTimeout(reintentoEquipo);
             if (unsubCambios) unsubCambios();
             if (unsubNotas) unsubNotas();
             if (unsubCambiosTodos) unsubCambiosTodos();
