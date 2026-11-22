@@ -243,13 +243,14 @@ function pantallaLogin(){
     h+='<div class="sec">Empezar</div>';
     h+='<button class="tile" style="background:#2563eb" data-modo="ind"><div class="circ">👤</div><div><b>Individual</b><small>Solo para mí</small></div></button>';
     h+='<button class="tile" style="background:#16a34a" data-modo="unir"><div class="circ">👥</div><div><b>Unirme a un grupo</b><small>Con el código y la contraseña</small></div></button>';
-    h+='<button class="tile" style="background:#7c3aed" data-modo="ct"><div class="circ">🔁</div><div><b>Correturnos</b><small>Todos los correturnos, por escalafón</small></div></button>';
+    h+='<button class="tile" style="background:#7c3aed" data-modo="ct"><div class="circ">🔁</div><div><b>Correturnos</b><small>Lista general de la empresa, por escalafón</small></div></button>';
     h+='<button class="tile" style="background:#0e7490" data-modo="pe"><div class="circ">🚐</div><div><b>Personales</b><small>Los autobuses de personal, por cocheras</small></div></button>';
     h+='<button class="tile" style="background:#be185d" data-modo="crear"><div class="circ">➕</div><div><b>Crear un grupo nuevo</b><small>Para tus compañeros</small></div></button>';
     h+='<div class="card small" style="margin-top:14px">📲 En el iPhone: pulsa el botón Compartir de Safari y elige <b>«Añadir a pantalla de inicio»</b> para usarla como una app.</div>';
   }else{
     const t={ind:'Individual',unir:'Unirme a un grupo',crear:'Crear un grupo',ct:'Correturnos',pe:'Personales'}[LF.modo];
     h+='<div class="card"><button class="btn" style="margin:0 0 6px" data-modo="">‹ Volver</button><h2 style="margin:8px 0">'+t+'</h2>';
+    if(LF.modo==='ct')h+='<div class="small" style="margin:0 0 6px">Aquí entras en la lista general de correturnos de la empresa. El escalafón es obligatorio porque sirve para ordenar la lista.</div>';
     if(LF.modo==='unir')h+='<label>Código del grupo</label><input type="text" id="lf-cod" autocapitalize="off"><label>Contraseña del grupo</label><input type="password" id="lf-pass">';
     if(LF.modo==='crear')h+='<label>Nombre del grupo</label><input type="text" id="lf-gn"><label>Contraseña</label><input type="password" id="lf-pass"><label>Repite la contraseña</label><input type="password" id="lf-pass2">';
     h+='<label>Tu nombre</label><input type="text" id="lf-nom"><label>Tu número de empleado</label><input type="tel" id="lf-id">';
@@ -284,7 +285,7 @@ function pintaForm(cont,F){
     };
     return;
   }
-  if(!ctLogin)h+='<label>¿Tienes línea asignada?</label><div class="chips"><button class="chip'+(!P.c?' on':'')+'" data-fc="0">Sí, línea fija</button><button class="chip'+(P.c?' on':'')+'" data-fc="1">Correturnos</button></div>';
+  if(!ctLogin)h+='<label>¿Tienes línea asignada?</label>'+(!(F===EF&&esCT())?'<div class="small" style="margin:0 0 6px">«Correturnos» aquí solo marca tu perfil dentro de este grupo. Para entrar en la lista general de correturnos de la empresa, usa el botón 🔁 Correturnos de la pantalla de inicio.</div>':'')+'<div class="chips"><button class="chip'+(!P.c?' on':'')+'" data-fc="0">Sí, línea fija</button><button class="chip'+(P.c?' on':'')+'" data-fc="1">Correturnos</button></div>';
   if(F===EF&&esCT()&&!P.c)h+='<div class="card small">Al guardar con línea fija saldrás de la lista de Correturnos y los que van detrás subirán un puesto.</div>';
   if(!P.c)h+='<label>Línea (opcional)</label><input type="text" id="pf-l" placeholder="Ej: 402 (la E2) o N5 (búho)" autocapitalize="characters" value="'+esc(P.l||'')+'"><label>Turno (opcional) · si eres correturnos de línea, escribe tu número y marca M o T</label><div style="display:flex;gap:8px"><input type="tel" id="pf-tu" placeholder="Ej: 5 o 023" style="flex:1" value="'+esc(P.tu||'')+'"><button class="chip'+(P.cl?' on':'')+'" data-fcl="menu" style="white-space:nowrap">Corre. Línea'+(P.cl?' '+P.cl:'')+' ▾</button></div>';
   if(!P.c&&F.abreCL)h+='<div style="display:flex;gap:8px;margin-top:8px;padding:10px;border:1px solid #ddd6fe;border-radius:12px"><button class="chip'+(P.cl==='M'?' on':'')+'" data-fcl="M" style="flex:1;text-align:center"><b style="font-size:1.2em">M</b><br>Mañana</button><div style="width:1px;background:#ddd6fe"></div><button class="chip'+(P.cl==='T'?' on':'')+'" data-fcl="T" style="flex:1;text-align:center"><b style="font-size:1.2em">T</b><br>Tarde</button></div>';
