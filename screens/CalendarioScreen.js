@@ -64,6 +64,7 @@ export default function CalendarioScreen({ navigation, route }) {
     const [cambios, setCambios] = useState({});
     const [cambiosTodos, setCambiosTodos] = useState({});
     const [panelDia, setPanelDia] = useState(null);
+    const [catTarjetaDia, setCatTarjetaDia] = useState(null); // de qué tarjeta (pendiente, generado…) viene un día «Librado»
     const [menuDia, setMenuDia] = useState(null);
     const [modoSeleccion, setModoSeleccion] = useState(null);
     const [modalCompaneros, setModalCompaneros] = useState(null);
@@ -285,6 +286,15 @@ export default function CalendarioScreen({ navigation, route }) {
     );
 
     function abrirPanel(d, mIdx) {
+        setCatTarjetaDia(null);
+        try {
+            const c = leerDia(cambios, anio, mIdx, d);
+            if (c && c.histKey && String(c.texto || '').startsWith('Librado')) {
+                get(ref(db, 'historial2/' + sesion.miID + '/' + c.histKey)).then(sn => {
+                    const h = sn.val(); if (h && h.cat) setCatTarjetaDia(h.cat);
+                }).catch(() => {});
+            }
+        } catch (e) {}
         setPanelDia({ d, mIdx });
         Animated.spring(panelAnim, { toValue: SW - PANEL_W, useNativeDriver: true }).start();
     }
@@ -807,6 +817,41 @@ export default function CalendarioScreen({ navigation, route }) {
         );
     }
 
+    // Explica por qué un día está marcado (cambio con compañero, pendiente, vacaciones…) para mostrarlo al tocar el día.
+    const motivoDelDia = (d, mIdx) => {
+        try {
+            const c = leerDia(cambios, anio, mIdx, d);
+            if (!c) return null;
+            const texto = String(c.texto || '');
+            if (c.linkedUid) {
+                const comp = (equipoActual || []).find(x => x.id === c.linkedUid);
+                const nom = comp ? comp.n : 'un compañero';
+                const m = texto.match(/\((?:x )?.*?(\d+\/\d+)\)/);
+                const otro = m ? m[1] : '';
+                return c.clase === 'b-inter'
+                    ? { emoji: '🤝', titulo: 'Cambio con ' + nom, detalle: 'Trabajas este día' + (otro ? ' a cambio de librar el ' + otro : '') + '.' }
+                    : { emoji: '🤝', titulo: 'Cambio con ' + nom, detalle: 'Libras este día' + (otro ? ' a cambio de trabajar el ' + otro : '') + '.' };
+            }
+            if (c.clase === 'b-vac') return { emoji: '🌴', titulo: 'Vacaciones', detalle: 'Día de tus vacaciones.' };
+            if (c.clase === 'b-l26') return { emoji: '🟡', titulo: 'L-26', detalle: 'Día marcado como L-26.' };
+            if (c.clase === 'b-generado') return { emoji: '✨', titulo: 'Día generado', detalle: texto && texto !== 'Generado' ? texto : 'Día marcado como generado.' };
+            if (texto === 'Libre sin compensación') return { emoji: '🎁', titulo: 'Libre sin compensación', detalle: 'Libras este día sin gastar ningún día.' };
+            if (texto === 'Trabajado (genera pendiente)') return { emoji: '⏳', titulo: 'Trabajado en día libre', detalle: 'Era tu día libre y lo has trabajado. Se generó un día pendiente.' };
+            if (c.clase === 'b-inter') {
+                const m = texto.match(/(\d+\/\d+)\)/);
+                return { emoji: '🔄', titulo: 'Cambio propio', detalle: 'Trabajas este día' + (m ? ' a cambio de librar el ' + m[1] : '') + '.' };
+            }
+            if (c.clase === 'b-cambio-libre') {
+                const nombres = { pendiente: 'un día pendiente', generado: 'un día generado', convenio: 'un día de convenio', l26: 'un L-26', libreGracioso: 'un día libre sin compensación' };
+                if (catTarjetaDia && nombres[catTarjetaDia]) return { emoji: '🏠', titulo: 'Libras este día', detalle: 'Lo has librado usando ' + nombres[catTarjetaDia] + '.' };
+                const m = texto.match(/(\d+\/\d+)\)/);
+                if (m) return { emoji: '🔄', titulo: 'Cambio propio', detalle: 'Libras este día a cambio de trabajar el ' + m[1] + '.' };
+                return { emoji: '🏠', titulo: 'Libras este día', detalle: texto || 'Día librado.' };
+            }
+            return null;
+        } catch (e) { return null; }
+    };
+
     const renderPanel = () => {
         if (!panelDia || !panelData) return null;
         const { d, mIdx } = panelDia;
@@ -818,6 +863,12 @@ export default function CalendarioScreen({ navigation, route }) {
                     <TouchableOpacity onPress={cerrarPanel}><Text style={s.panelCerrar}>✕</Text></TouchableOpacity>
                 </View>
                 <ScrollView>
+                    {(() => { const mo = motivoDelDia(d, mIdx); return mo ? (
+                        <View style={{ backgroundColor: 'rgba(124,58,237,0.12)', borderRadius: 10, padding: 10, marginBottom: 12 }}>
+                            <Text style={[s.panelNombre, { marginBottom: 2 }]}>{mo.emoji} {mo.titulo}</Text>
+                            <Text style={s.panelSub}>{mo.detalle}</Text>
+                        </View>
+                    ) : null; })()}
                     <Text style={[s.panelSeccion, { color: '#ef4444' }]}>🏠 LIBRAN{equipoListo ? ` (${libran.length})` : ''}</Text>
                     {libran.length ? libran.map(p => (
                         <View key={p.id} style={s.panelFila}>
