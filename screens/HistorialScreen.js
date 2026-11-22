@@ -304,9 +304,11 @@ export default function HistorialScreen({ navigation, route }) {
     async function borrarItem(key, item) {
         const esAutomatico = item.subtipo === 'festivo_auto' || item.subtipo === 'exceso_vac';
         const esL26 = item.cat === 'l26';
+        // Un día ya usado (con día asignado en el calendario) también deja elegir: quitar solo el cambio y que la tarjeta quede disponible.
+        const usadoConDia = !esAutomatico && !!item.usado && !!item.diaAsignado;
 
-        if (esL26) {
-            Alert.alert('🟡 L-26', '¿Qué quieres hacer?', [
+        if (esL26 || usadoConDia) {
+            Alert.alert(esL26 ? '🟡 L-26' : '🗑️ Borrar', '¿Qué quieres hacer?', [
                 { text: 'Cancelar', style: 'cancel' },
                 { text: 'Borrar solo el cambio', onPress: async () => {
                     // Borra el día del calendario pero la tarjeta queda disponible
@@ -317,7 +319,7 @@ export default function HistorialScreen({ navigation, route }) {
                         usado: false, accion: null, diaAsignado: null
                     });
                 }},
-                { text: 'Borrar día L-26', style: 'destructive', onPress: async () => {
+                { text: esL26 ? 'Borrar día L-26' : 'Borrar el día del todo', style: 'destructive', onPress: async () => {
                     // Borra el día del calendario Y la tarjeta del historial
                     if (item.diaAsignado) {
                         await remove(ref(db, 'cambios/' + sesion.miID + '/' + item.diaAsignado));
