@@ -315,6 +315,7 @@ export default function LoginScreen({ navigation }) {
                     </TouchableOpacity>
                     <TouchableOpacity style={[s.btnGrande, { marginTop: 8 }]} onPress={() => setModo('correturnos')}>
                         <Text style={s.btnGrandeTexto}>🔁 Correturnos</Text>
+                        <Text style={s.btnGrandeSubtexto}>Lista general de la empresa, por escalafón</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[s.btnGrande, { marginTop: 8 }]} onPress={() => setModo('personales')}>
                         <Text style={s.btnGrandeTexto}>Personales</Text>
@@ -337,7 +338,7 @@ export default function LoginScreen({ navigation }) {
                     </TouchableOpacity>
                     <TouchableOpacity style={[s.btnGrande, { marginTop: 12 }]} onPress={() => setModo('correturnos')}>
                         <Text style={s.btnGrandeTexto}>🔁 Correturnos</Text>
-                        <Text style={s.btnGrandeSubtexto}>Todos los correturnos, por escalafón</Text>
+                        <Text style={s.btnGrandeSubtexto}>Lista general de la empresa, por escalafón</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[s.btnGrande, { marginTop: 12 }]} onPress={() => setModo('personales')}>
                         <Text style={s.btnGrandeTexto}>Personales</Text>
@@ -365,6 +366,9 @@ export default function LoginScreen({ navigation }) {
             {modo === 'correturnos' && (
                 <View style={s.card}>
                     <Text style={s.cardTitulo}>🔁 Correturnos</Text>
+                    <Text style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>
+                        Aquí entras en la lista general de correturnos de la empresa. El escalafón es obligatorio porque sirve para ordenar la lista.
+                    </Text>
                     <Text style={s.label}>Tu nombre</Text>
                     <TextInput style={s.input} placeholder="Ej: Curro" value={ctNombre} onChangeText={setCtNombre} />
                     <Text style={s.label}>Tu número de empleado</Text>

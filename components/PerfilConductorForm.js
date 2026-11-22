@@ -142,6 +142,11 @@ export default function PerfilConductorForm({ value, onChange, soloCorreturnos =
                 </View>
             )}
             {!soloCorreturnos && !soloPersonales && <Text style={s.label}>¿Tienes línea asignada?</Text>}
+            {!soloCorreturnos && !soloPersonales && !avisoSalirCT && !escalafonObligatorio && (
+                <Text style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>
+                    "Correturnos" aquí solo marca tu perfil dentro de este grupo. Para entrar en la lista general de correturnos de la empresa, usa el botón 🔁 Correturnos de la pantalla de inicio.
+                </Text>
+            )}
             {avisoSalirCT && !v.c && (
                 <Text style={{ fontSize: 12, color: '#b45309', marginTop: 8 }}>
                     Al guardar con línea fija saldrás de la lista de Correturnos y los que van detrás subirán un puesto.
