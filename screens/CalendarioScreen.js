@@ -669,7 +669,7 @@ export default function CalendarioScreen({ navigation, route }) {
             return;
         }
 
-        if (tipo === 'pendiente') {
+        if (tipo === 'pendiente' || tipo === 'trabajadoLibre') {
             const p = (equipoActual || []).find(x => x.id === sesion.miID);
             const grupo = p ? p.g : sesion.miGrupoSesion;
             const turno = p ? p.t : sesion.miTipoSesion;
@@ -691,6 +691,11 @@ export default function CalendarioScreen({ navigation, route }) {
                 });
                 await set(r, { clase: 'b-inter', texto: 'Trabajado (genera pendiente)', histKey: hRef.key });
                 Alert.alert('✅ Pendiente generado', `Has trabajado el ${d}/${mIdx + 1} y se ha añadido un día pendiente para usar cuando quieras.`);
+                return;
+            }
+
+            if (tipo === 'trabajadoLibre') {
+                Alert.alert('Este día ya lo trabajas', 'Esta opción solo sirve para un día libre que vas a trabajar.');
                 return;
             }
 
@@ -832,6 +837,18 @@ export default function CalendarioScreen({ navigation, route }) {
         );
     };
 
+    // ¿El día pulsado es un día libre mío? (para mostrar el botón «Trabajado (en día libre)»)
+    const menuDiaEsLibre = (d, mIdx) => {
+        try {
+            const p = (equipoActual || []).find(x => x.id === sesion.miID);
+            const grupo = p ? p.g : sesion.miGrupoSesion;
+            const turno = p ? p.t : sesion.miTipoSesion;
+            const base = getDiasLibres(anio, grupo, turno) || {};
+            const libreTurno = (base[mIdx] || []).includes(d);
+            return esDiaLibre(libreTurno, leerDia(cambios, anio, mIdx, d));
+        } catch (e) { return false; }
+    };
+
     const renderMenu = () => {
         if (!menuDia) return null;
         const { d, mIdx } = menuDia;
@@ -839,6 +856,7 @@ export default function CalendarioScreen({ navigation, route }) {
             { label: '✨ Generado', tipo: 'generado', color: '#be185d' },
             { label: '📋 Convenio', tipo: 'convenio', color: '#1d4ed8' },
             { label: '⏳ Pendiente', tipo: 'pendiente', color: '#6b21a8' },
+            ...(menuDiaEsLibre(d, mIdx) ? [{ label: '🟡 Trabajado (en día libre)', tipo: 'trabajadoLibre', color: '#a16207' }] : []),
             { label: '🟡 L-26', tipo: 'l26', color: '#b45309' },
             { label: '🌴 Vacaciones', tipo: 'vacaciones', color: '#166534' },
             { label: '🎁 Libre sin compensación', tipo: 'libreGracioso', color: '#0891b2' },
