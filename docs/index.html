@@ -763,6 +763,7 @@ async function marcarDia(y,m,d,clase){
       await db.ref('cambios/'+S.miID+'/'+key).remove();
     }else{
       if(prev&&prev.histKey&&!confirm('Este día está enlazado con el Historial de la app de Android. ¿Seguro que quieres sustituir la marca?'))return;
+      if(clase==='b-inter'){const dm=misDatos();if(esLibreFinal(y,dm.g,dm.t,m,d,cambios)){await pendienteDia(y,m,d);return}}
       const txt={'b-vac':'Vacaciones','b-cambio-libre':'Libre sin compensación','b-inter':'Trabajado'}[clase];
       if(clase==='b-cambio-libre'){
         const hr=db.ref('historial2/'+S.miID).push();
