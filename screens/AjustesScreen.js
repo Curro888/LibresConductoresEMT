@@ -11,7 +11,7 @@ import { useTheme } from '../context/ThemeContext';
 import CopiaSeguridad from '../components/CopiaSeguridad';
 import { APP_VERSION } from '../config/version';
 import { alerta14Activada, activarAlerta14 } from '../services/notifications';
-import { comprobarDatosGrupo, quiereEntrarEnGrupo, comprobarGrupoRemoto, fichaMiembro, nuevaListaGrupos } from '../utils/entradaGrupoDesdeCT';
+import { comprobarDatosGrupo, quiereEntrarEnGrupo, comprobarGrupoRemoto, fichaMiembro, nuevaListaGrupos, limpiarCodigoGrupo } from '../utils/entradaGrupoDesdeCT';
 
 const HORAS_POR_DIA = 7.5; // Ajustar si el convenio cambia
 
@@ -141,7 +141,7 @@ export default function AjustesScreen({ navigation }) {
             const errDatosGrupo = comprobarDatosGrupo(editGrupoCodigo, editGrupoPass);
             if (errDatosGrupo) { Alert.alert('⚠️', errDatosGrupo); return; }
             const entraEnGrupo = quiereEntrarEnGrupo(editGrupoCodigo, editGrupoPass);
-            const codigoGrupo = editGrupoCodigo.trim();
+            const codigoGrupo = limpiarCodigoGrupo(editGrupoCodigo);
             try {
                 // Se comprueba el grupo ANTES de salir de Correturnos: si algo falla, no se cambia nada.
                 if (entraEnGrupo) {

@@ -1,12 +1,17 @@
 // Piezas pequeñas para «pasar de Correturnos a línea fija y entrar directamente en el grupo de la línea».
 // Están aparte (sin Firebase ni pantallas) para poder probarlas solas.
 
+// Los códigos de grupo nunca llevan espacios; si el teclado del móvil mete uno, se quita.
+export function limpiarCodigoGrupo(codigo) {
+    return String(codigo || '').replace(/\s+/g, '');
+}
+
 const CODIGOS_NO_VALIDOS = ['CT', 'PE']; // Correturnos y Personales no son grupos de línea
 
 // Comprueba lo que ha escrito la persona, antes de tocar nada.
 // Devuelve un texto de error, o null si está bien (o si no ha rellenado nada: entonces no se entra a ningún grupo).
 export function comprobarDatosGrupo(codigo, pass) {
-    const c = String(codigo || '').trim();
+    const c = limpiarCodigoGrupo(codigo);
     const p = String(pass || '').trim();
     if (!c && !p) return null;
     if (!c || !p) return 'Para entrar en el grupo de tu línea rellena el código y la contraseña, o deja las dos casillas vacías.';
@@ -16,7 +21,7 @@ export function comprobarDatosGrupo(codigo, pass) {
 
 // ¿Quiere entrar en un grupo? (las dos casillas rellenas)
 export function quiereEntrarEnGrupo(codigo, pass) {
-    return !!(String(codigo || '').trim() && String(pass || '').trim());
+    return !!(limpiarCodigoGrupo(codigo) && String(pass || '').trim());
 }
 
 // Comprueba el grupo que viene de Firebase. Devuelve un texto de error o null.

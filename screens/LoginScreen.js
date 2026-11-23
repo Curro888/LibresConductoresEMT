@@ -11,6 +11,7 @@ import { etiquetaGrupo } from '../config/libresConductores';
 import { CODIGO_PERSONALES } from '../config/personales';
 import { withFirebaseErrorHandling } from '../utils/firebaseErrorHandler';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { limpiarCodigoGrupo } from '../utils/entradaGrupoDesdeCT';
 
 export default function LoginScreen({ navigation }) {
     const isConnected = useNetworkStatus(); // true/false en tiempo real
@@ -128,7 +129,7 @@ export default function LoginScreen({ navigation }) {
     async function unirseGrupo() {
         if (!isConnected) { Alert.alert('Sin conexión', 'Necesitas internet para unirte a un grupo.'); return; }
 
-        const codigo = grupoCodigo.trim();
+        const codigo = limpiarCodigoGrupo(grupoCodigo);
         const pass = grupoPassword.trim();
         const miID = grupoMiID.trim();
         const miNombre = grupoMiNombre.trim();
