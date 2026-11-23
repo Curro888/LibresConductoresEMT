@@ -14,7 +14,7 @@ const LIGHT = {
     borde: '#e2e8f0',
     primario: '#7c3aed',
     primarioClaro: '#ede9fe',
-    celdaLibre: '#fee2e2',
+    celdaLibre: '#fecaca',
     celdaLibreTexto: '#991b1b',
     celdaTrabajo: '#f1f5f9',
     celdaTrabajoTexto: '#334155',

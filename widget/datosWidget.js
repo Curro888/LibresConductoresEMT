@@ -9,7 +9,7 @@ function estiloDia(cambio, esLibre, lrj, sub, festivo) {
     if (cambio.clase === 'b-inter') libreReal = false;
     if (cambio.clase === 'b-cambio-libre') libreReal = true;
   }
-  let bg = libreReal ? '#fee2e2' : '#f1f5f9';
+  let bg = libreReal ? '#fecaca' : '#f1f5f9';
   let fg = libreReal ? '#991b1b' : '#334155';
   if (esLibre && libreReal) {
     if (lrj) { bg = '#a7f3d0'; fg = '#065f46'; }
@@ -20,7 +20,7 @@ function estiloDia(cambio, esLibre, lrj, sub, festivo) {
     if (cambio.clase === 'b-vac') { bg = '#dcfce7'; fg = '#166534'; }
     if (cambio.clase === 'b-pend') { bg = '#f3e8ff'; fg = '#6b21a8'; }
     if (cambio.clase === 'b-inter') { bg = '#fef08a'; fg = '#713f12'; }
-    if (cambio.clase === 'b-cambio-libre') { bg = '#fee2e2'; fg = '#991b1b'; }
+    if (cambio.clase === 'b-cambio-libre') { bg = '#fecaca'; fg = '#991b1b'; }
     if (cambio.clase === 'b-generado') { bg = '#fdf2f8'; fg = '#be185d'; }
     if (cambio.clase === 'b-l26') { bg = '#fefce8'; fg = '#b45309'; }
   }

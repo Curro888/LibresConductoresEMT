@@ -180,7 +180,7 @@ export default function CalendarioCompaneroScreen({ route, navigation }) {
                 if (cambio.clase === 'b-vac') { bgColor = '#dcfce7'; textColor = '#166534'; borderColor = '#16a34a'; }
                 if (cambio.clase === 'b-pend') { bgColor = '#f3e8ff'; textColor = '#6b21a8'; borderColor = '#9333ea'; }
                 if (cambio.clase === 'b-inter') { bgColor = '#fef08a'; textColor = '#713f12'; borderColor = '#eab308'; }
-                if (cambio.clase === 'b-cambio-libre') { bgColor = '#fee2e2'; textColor = '#991b1b'; borderColor = '#ef4444'; }
+                if (cambio.clase === 'b-cambio-libre') { bgColor = '#fecaca'; textColor = '#991b1b'; borderColor = '#ef4444'; }
                 if (cambio.clase === 'b-generado') { bgColor = '#fdf2f8'; textColor = '#be185d'; borderColor = '#f472b6'; }
                 if (cambio.clase === 'b-l26') { bgColor = '#fefce8'; textColor = '#b45309'; borderColor = '#f59e0b'; }
             }
