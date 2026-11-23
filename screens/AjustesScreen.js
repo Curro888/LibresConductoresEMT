@@ -11,6 +11,7 @@ import { useTheme } from '../context/ThemeContext';
 import CopiaSeguridad from '../components/CopiaSeguridad';
 import { APP_VERSION } from '../config/version';
 import { alerta14Activada, activarAlerta14 } from '../services/notifications';
+import { comprobarDatosGrupo, quiereEntrarEnGrupo, comprobarGrupoRemoto, fichaMiembro, nuevaListaGrupos } from '../utils/entradaGrupoDesdeCT';
 
 const HORAS_POR_DIA = 7.5; // Ajustar si el convenio cambia
 
@@ -24,6 +25,8 @@ export default function AjustesScreen({ navigation }) {
     const [esAdmin, setEsAdmin] = useState(false);
     const [editNombre, setEditNombre] = useState('');
     const [editPerfil, setEditPerfil] = useState(PERFIL_VACIO);
+    const [editGrupoCodigo, setEditGrupoCodigo] = useState(''); // opcional: al pasar de Correturnos a línea fija, grupo al que entrar
+    const [editGrupoPass, setEditGrupoPass] = useState('');
     const [fotoPerfil, setFotoPerfil] = useState(null);
     const [alerta14, setAlerta14] = useState(true);
     useEffect(() => { alerta14Activada().then(setAlerta14); }, []);
@@ -134,7 +137,18 @@ export default function AjustesScreen({ navigation }) {
 
         // Pasa a línea fija: sale de Correturnos y los que van detrás suben un puesto.
         if (enCT && !m.c) {
+            // Opcional: si ha escrito el código y la contraseña del grupo de su línea, entra directamente en él.
+            const errDatosGrupo = comprobarDatosGrupo(editGrupoCodigo, editGrupoPass);
+            if (errDatosGrupo) { Alert.alert('⚠️', errDatosGrupo); return; }
+            const entraEnGrupo = quiereEntrarEnGrupo(editGrupoCodigo, editGrupoPass);
+            const codigoGrupo = editGrupoCodigo.trim();
             try {
+                // Se comprueba el grupo ANTES de salir de Correturnos: si algo falla, no se cambia nada.
+                if (entraEnGrupo) {
+                    const snapG = await get(ref(db, 'grupos/' + codigoGrupo));
+                    const errGrupo = comprobarGrupoRemoto(snapG.val(), editGrupoPass);
+                    if (errGrupo) { Alert.alert('⚠️', errGrupo); return; }
+                }
                 const snap = await get(ref(db, 'grupos/CT/miembros'));
                 const todos = snap.val() || {};
                 const miE = parseInt((todos[sesion.miID] || {}).e, 10);
@@ -148,10 +162,22 @@ export default function AjustesScreen({ navigation }) {
                         if (!isNaN(e) && e > miE) cambios['grupos/CT/miembros/' + k + '/e'] = String(e - 1);
                     });
                 }
+                // Salir de Correturnos y (si procede) entrar en el grupo de la línea, todo en un solo paso.
+                if (entraEnGrupo) cambios['grupos/' + codigoGrupo + '/miembros/' + sesion.miID] = fichaMiembro(editNombre, sesion.miID, m);
                 await update(ref(db), cambios);
                 const raw = await AsyncStorage.getItem('misGrupos2026');
-                const lista = (raw ? JSON.parse(raw) : []).filter(g => g.codigo !== 'CT');
-                await AsyncStorage.setItem('misGrupos2026', JSON.stringify(lista));
+                const listaActual = raw ? JSON.parse(raw) : [];
+                if (entraEnGrupo) {
+                    const entrada = { codigo: codigoGrupo, id: sesion.miID, nombre: editNombre.trim(), tipo: m.t, grupoLibres: m.g, perfil: m };
+                    await AsyncStorage.setItem('misGrupos2026', JSON.stringify(nuevaListaGrupos(listaActual, entrada)));
+                    const enGrupo = { ...sesion, miNombreCompleto: editNombre.trim(), miGrupoSesion: m.g, miTipoSesion: m.t, miPerfil: m, modoGrupo: true, grupoActual: codigoGrupo };
+                    await AsyncStorage.setItem('sesion2026', JSON.stringify(enGrupo));
+                    setModalPerfil(false);
+                    Alert.alert('✅ Has salido de Correturnos', 'Tu perfil se ha guardado con línea fija, los correturnos que iban detrás han subido un puesto y ya estás dentro del grupo de tu línea.');
+                    navigation.replace('Main', enGrupo);
+                    return;
+                }
+                await AsyncStorage.setItem('misGrupos2026', JSON.stringify(listaActual.filter(g => g.codigo !== 'CT')));
                 const sinCT = { ...sesion, miNombreCompleto: editNombre.trim(), miGrupoSesion: m.g, miTipoSesion: m.t, miPerfil: m, modoGrupo: false, grupoActual: null };
                 await AsyncStorage.setItem('sesion2026', JSON.stringify(sinCT));
                 setModalPerfil(false);
@@ -298,7 +324,7 @@ export default function AjustesScreen({ navigation }) {
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
 
                 {/* Perfil */}
-                <TouchableOpacity style={s.card} onPress={() => setModalPerfil(true)}>
+                <TouchableOpacity style={s.card} onPress={() => { setEditGrupoCodigo(''); setEditGrupoPass(''); setModalPerfil(true); }}>
                     <View style={s.filaSwitch}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                             {fotoPerfil
@@ -478,6 +504,14 @@ export default function AjustesScreen({ navigation }) {
                         <TextInput style={s.modalInput} value={editNombre} onChangeText={setEditNombre} placeholder="Tu nombre" placeholderTextColor={theme.textoTenue} maxLength={50} />
 
                         <PerfilConductorForm value={editPerfil} onChange={setEditPerfil} escalafonObligatorio={!!(sesion && sesion.modoGrupo && sesion.grupoActual === "CT")} avisoSalirCT={!!(sesion && sesion.modoGrupo && sesion.grupoActual === "CT")} soloPersonales={!!(sesion && sesion.modoGrupo && sesion.grupoActual === "PE")} permitePersonales={!!(sesion && sesion.miID && !(sesion.modoGrupo && sesion.grupoActual === "PE"))} />
+                        {sesion && sesion.modoGrupo && sesion.grupoActual === 'CT' && !editPerfil.c && !editPerfil.pe && (
+                            <View style={{ marginTop: 14 }}>
+                                <Text style={s.modalLabel}>Entrar en el grupo de tu línea (opcional)</Text>
+                                <Text style={{ fontSize: 12, color: theme.textoTenue, marginBottom: 6 }}>Si quieres entrar ya en el grupo de tu línea, escribe aquí su código y su contraseña. Si lo dejas vacío, solo sales de Correturnos y puedes entrar al grupo después.</Text>
+                                <TextInput style={s.modalInput} value={editGrupoCodigo} onChangeText={setEditGrupoCodigo} placeholder="Código del grupo" placeholderTextColor={theme.textoTenue} autoCapitalize="none" autoCorrect={false} />
+                                <TextInput style={[s.modalInput, { marginTop: 8 }]} value={editGrupoPass} onChangeText={setEditGrupoPass} placeholder="Contraseña del grupo" placeholderTextColor={theme.textoTenue} secureTextEntry autoCapitalize="none" autoCorrect={false} />
+                            </View>
+                        )}
 
                         <View style={{ flexDirection: 'row', gap: 8, marginTop: 20 }}>
                             <TouchableOpacity style={s.btnCancelarModal} onPress={() => setModalPerfil(false)}>
