@@ -44,13 +44,12 @@ export default function CompanerosScreen({ navigation }) {
     const [fotoPerfil, setFotoPerfil] = useState(null);
 
     useEffect(() => {
-        let unsubCambiosTodos, unsubPresencias, unsubMiembros;
+        let unsubPresencias, unsubMiembros;
         async function cargar() {
             const raw = await AsyncStorage.getItem('sesion2026');
             if (raw) {
                 const s = JSON.parse(raw);
                 setSesion(s);
-                unsubCambiosTodos = onValue(ref(db, 'cambios'), snap => setCambiosTodos(snap.val() || {}));
                 if (s.modoGrupo && s.grupoActual) {
                     unsubPresencias = onValue(ref(db, 'presencia/' + s.grupoActual), snap => setPresencias(snap.val() || {}));
                     unsubMiembros = onValue(ref(db, 'grupos/' + s.grupoActual + '/miembros'), snap => {
@@ -68,7 +67,6 @@ export default function CompanerosScreen({ navigation }) {
         }
         cargar();
         return () => {
-            if (unsubCambiosTodos) unsubCambiosTodos();
             if (unsubPresencias) unsubPresencias();
             if (unsubMiembros) unsubMiembros();
         };
@@ -146,6 +144,18 @@ export default function CompanerosScreen({ navigation }) {
         if (sesion.modoGrupo) return miembrosGrupo || [];
         return equipoBase;
     }, [sesion, miembrosGrupo]);
+
+    // Solo se descargan los cambios de la gente de este grupo (antes se bajaba todo el nodo 'cambios')
+    const idsEquipo = equipoActual.map(p => p.id).join(',');
+    useEffect(() => {
+        if (!idsEquipo) return;
+        const unsubs = idsEquipo.split(',').map(id =>
+            onValue(ref(db, 'cambios/' + id), snap =>
+                setCambiosTodos(prev => ({ ...prev, [id]: snap.val() || {} }))
+            )
+        );
+        return () => unsubs.forEach(u => u());
+    }, [idsEquipo]);
 
     const listaCompaneros = useMemo(() => {
         if (!sesion) return [];
